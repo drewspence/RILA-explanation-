@@ -167,9 +167,17 @@ export default function HomePage() {
             <Card>
               <SectionHeader
                 title="Interactive Payoff Visualization"
-                subtitle="Market return on x-axis, credited strategy return on y-axis"
+                subtitle="See how market performance maps to credited strategy return in real time"
               />
-              <PayoffChart data={payoffData} marketReturn={marketReturn} creditedReturn={outcome.creditedReturnNet} />
+              <PayoffChart
+                strategy={strategy}
+                inputs={inputs}
+                data={payoffData}
+                marketReturn={marketReturn}
+                creditedReturn={outcome.creditedReturnNet}
+                startingPremium={startingPremium}
+                endingValue={outcome.endingValue}
+              />
             </Card>
           )}
 
