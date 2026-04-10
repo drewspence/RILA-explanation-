@@ -3,6 +3,7 @@ import {
   dualPrecision,
   guard,
   performanceWithCap,
+  performanceWithParticipation,
   precision,
   protectionCap,
   protectionTrigger,
@@ -34,6 +35,29 @@ describe("strategy calculations", () => {
 
   it("15) Protection Cap +15% => +7%", () => close(protectionCap(0.15, { cap: 0.07 }), 0.07));
   it("16) Protection Cap -20% => 0%", () => close(protectionCap(-0.2, {}), 0));
+
+
+  it("participation upside slope and buffer boundary", () => {
+    close(performanceWithParticipation(0.1, { participationRate: 1.5, buffer: 0.1 }), 0.15);
+    close(performanceWithParticipation(-0.1, { buffer: 0.1 }), 0);
+    close(performanceWithParticipation(-0.11, { buffer: 0.1 }), -0.01);
+  });
+
+  it("breakpoint behavior is exact at 0, -buffer, cap, floor, and trigger thresholds", () => {
+    close(performanceWithCap(0, { cap: 0.12, buffer: 0.1 }), 0);
+    close(performanceWithCap(-0.1, { cap: 0.12, buffer: 0.1 }), 0);
+    close(performanceWithCap(0.12, { cap: 0.12, buffer: 0.1 }), 0.12);
+
+    close(guard(-0.1, { floor: -0.1, cap: 0.12 }), -0.1);
+    close(guard(-0.11, { floor: -0.1, cap: 0.12 }), -0.1);
+
+    close(precision(0, { triggerRate: 0.09, buffer: 0.1 }), 0.09);
+    close(precision(-0.1, { triggerRate: 0.09, buffer: 0.1 }), 0);
+    close(dualPrecision(-0.1, { triggerRate: 0.08, buffer: 0.1 }), 0.08);
+
+    close(protectionTrigger(0, { triggerRate: 0.04 }), 0.04);
+    close(protectionCap(0.07, { cap: 0.07 }), 0.07);
+  });
 
   it("applies fee and computes ending value", () => {
     const net = applyFee(0.08, true, 0.01);

@@ -1,4 +1,5 @@
 import { applyFee, computeEndingValue } from "@/lib/calculations/strategies";
+import { buildPayoffSeries } from "@/lib/calculations/payoffVisualization";
 import { StrategyConfig, StrategyInputs, StrategyResult } from "@/types/strategy";
 
 export function calculateStrategyOutcome(
@@ -26,12 +27,5 @@ export function calculateStrategyOutcome(
 }
 
 export function buildPayoffData(config: StrategyConfig, inputs: StrategyInputs, feeEnabled: boolean, annualFee: number) {
-  const points = [] as Array<{ market: number; credited: number }>;
-  for (let i = -40; i <= 40; i += 1) {
-    const market = i / 100;
-    const gross = config.calculate(market, inputs);
-    const credited = applyFee(gross, feeEnabled, annualFee);
-    points.push({ market, credited });
-  }
-  return points;
+  return buildPayoffSeries(config, inputs, feeEnabled, annualFee);
 }
