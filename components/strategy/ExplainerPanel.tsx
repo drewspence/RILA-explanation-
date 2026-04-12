@@ -15,31 +15,39 @@ export function ExplainerPanel({ strategy, marketReturn, creditedReturn, inputs 
   const overBuffer = Math.max(0, Math.abs(marketReturn) - buffer);
 
   return (
-    <Card>
-      <h3 className="text-xl font-semibold">How this result is built</h3>
-      <div className="mt-4 space-y-3 text-sm text-slate-700">
-        <Line label="Market move" value={pct(marketReturn)} />
-        {strategy.protectionType.includes("Buffer") && marketReturn < 0 && (
-          <>
-            <Line label="Buffer absorbed" value={pct(Math.min(Math.abs(marketReturn), buffer))} />
-            <Line label="Remaining downside applied" value={pct(overBuffer)} />
-          </>
-        )}
-        {strategy.id === "guard" && marketReturn < floor && <Line label="Floor applied" value={pct(floor)} />}
-        <Line label="Final credited return" value={pct(creditedReturn)} highlight />
-      </div>
-      <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
-        <div className="h-full bg-advisorBlue" style={{ width: `${Math.min(100, Math.max(0, (creditedReturn + 0.4) * 125))}%` }} />
-      </div>
-    </Card>
+    <div className="grid gap-4 xl:grid-cols-4">
+      <InfoCard
+        title="Downside Protection"
+        body={
+          strategy.protectionType.includes("Buffer")
+            ? `First ${pct(buffer)} of losses are absorbed before client value declines.`
+            : `Protection follows ${strategy.protectionType.toLowerCase()} terms.`
+        }
+      />
+      <InfoCard
+        title="Growth Potential"
+        body={inputs.cap ? `Upside growth is credited until the ${pct(inputs.cap)} cap.` : "Upside follows participation or trigger terms for this strategy."}
+      />
+      <InfoCard title="Current Outcome" body={`Market ${pct(marketReturn)} results in credited return of ${pct(creditedReturn)}.`} />
+      <Card className="bg-slate-50">
+        <h3 className="text-sm font-semibold text-slate-900">Strategy Tradeoff</h3>
+        <div className="mt-2 space-y-1 text-sm text-slate-700">
+          {strategy.protectionType.includes("Buffer") && marketReturn < 0 && (
+            <p>Loss beyond buffer: <strong>{pct(overBuffer)}</strong></p>
+          )}
+          {strategy.id === "guard" && marketReturn < floor && <p>Floor applied at <strong>{pct(floor)}</strong>.</p>}
+          <p>{strategy.tradeoff}</p>
+        </div>
+      </Card>
+    </div>
   );
 }
 
-function Line({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function InfoCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span>{label}</span>
-      <strong className={highlight ? "text-advisorBlue" : "text-slate-900"}>{value}</strong>
-    </div>
+    <Card className="bg-slate-50">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm text-slate-700">{body}</p>
+    </Card>
   );
 }

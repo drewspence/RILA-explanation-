@@ -18,21 +18,34 @@ export function PresentationView({
   comparisonSummary?: string;
 }) {
   return (
-    <Card className="print:shadow-none">
-      <h3 className="text-3xl font-bold">Presentation / Print View</h3>
-      <p className="mt-2 text-lg">Client: {clientName || "Client Name"}</p>
-      <p className="text-lg">Strategy shown: {strategy}</p>
-      <div className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
-        <p><strong>Market return:</strong> {pct(marketReturn)}</p>
-        <p><strong>Credited return:</strong> {pct(result.creditedReturn)}</p>
-        <p><strong>Dollar gain/loss:</strong> {currency(result.dollarChange)}</p>
-        <p><strong>Ending value:</strong> {currency(result.endingValue)}</p>
+    <Card className="print:rounded-none print:border-none print:shadow-none">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Advisor presentation view</p>
+      <h3 className="mt-1 text-3xl font-semibold text-slate-900">Client Illustration Summary</h3>
+      <p className="mt-2 text-sm text-slate-600">Client: <strong>{clientName || "Client Name"}</strong></p>
+      <p className="text-sm text-slate-600">Strategy: <strong>{strategy}</strong></p>
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+        <Stat label="Market return" value={pct(marketReturn)} />
+        <Stat label="Credited return" value={pct(result.creditedReturn)} />
+        <Stat label="Dollar gain / loss" value={currency(result.dollarChange)} />
+        <Stat label="Ending value" value={currency(result.endingValue)} />
       </div>
-      <ul className="mt-3 list-disc pl-5 text-sm text-slate-600">
-        {assumptions.map((item) => <li key={item}>{item}</li>)}
-      </ul>
-      {comparisonSummary && <p className="mt-3 rounded-lg bg-slate-100 p-3 text-sm">{comparisonSummary}</p>}
-      <p className="mt-3 text-sm text-slate-600">Use browser print (Ctrl/Cmd + P) for export-ready output.</p>
+      <div className="mt-4 rounded-xl bg-slate-50 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Assumptions</p>
+        <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+          {assumptions.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      </div>
+      {comparisonSummary && <p className="mt-4 rounded-lg bg-slate-100 p-3 text-sm">{comparisonSummary}</p>}
+      <p className="mt-4 text-xs text-slate-500">For client discussion only. This summary is not a contract or performance guarantee.</p>
     </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-3">
+      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+    </div>
   );
 }

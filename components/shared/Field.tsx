@@ -1,3 +1,5 @@
+import clsx from "clsx";
+
 interface FieldProps {
   label: string;
   value: number;
@@ -6,13 +8,14 @@ interface FieldProps {
   max?: number;
   step?: number;
   suffix?: string;
+  theme?: "light" | "dark";
 }
 
-export function Field({ label, value, onChange, min, max, step = 0.1, suffix = "%" }: FieldProps) {
+export function Field({ label, value, onChange, min, max, step = 0.1, suffix = "%", theme = "light" }: FieldProps) {
   return (
-    <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+    <label className={clsx("mb-3 flex flex-col gap-2 text-sm font-medium", theme === "dark" ? "text-slate-100" : "text-slate-700")}>
       {label}
-      <div className="flex items-center rounded-xl border border-slate-200 px-3 py-2">
+      <div className={clsx("flex items-center rounded-xl border px-3 py-2", theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white")}>
         <input
           type="number"
           inputMode="decimal"
@@ -21,9 +24,9 @@ export function Field({ label, value, onChange, min, max, step = 0.1, suffix = "
           min={min}
           max={max}
           step={step}
-          className="w-full bg-transparent text-base text-slate-900 focus:outline-none"
+          className={clsx("w-full bg-transparent text-base focus:outline-none", theme === "dark" ? "text-white" : "text-slate-900")}
         />
-        {suffix && <span className="text-slate-500">{suffix}</span>}
+        {suffix && <span className={theme === "dark" ? "text-slate-400" : "text-slate-500"}>{suffix}</span>}
       </div>
     </label>
   );
