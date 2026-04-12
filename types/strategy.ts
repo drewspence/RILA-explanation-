@@ -10,9 +10,6 @@ export type StrategyId =
 export interface GlobalInputs {
   startingPremium: number;
   marketReturn: number;
-  feeEnabled: boolean;
-  annualFee: number;
-  showNetOfFee: boolean;
   roundToDollar: boolean;
 }
 
@@ -26,11 +23,19 @@ export interface StrategyInputs {
 }
 
 export interface StrategyResult {
-  creditedReturnGross: number;
-  creditedReturnNet: number;
+  creditedReturn: number;
   endingValue: number;
   dollarChange: number;
   explanation: string;
+}
+
+export interface StrategyComparisonResult {
+  a: StrategyResult;
+  b: StrategyResult;
+  creditedDifference: number;
+  endingValueDifference: number;
+  winner: "A" | "B" | "Tie";
+  summary: string;
 }
 
 export interface StrategyConfig {

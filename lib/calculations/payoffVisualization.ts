@@ -1,4 +1,3 @@
-import { applyFee, computeEndingValue } from "./strategies";
 import { StrategyConfig, StrategyId, StrategyInputs } from "../../types/strategy";
 
 export interface PayoffPoint {
@@ -13,6 +12,7 @@ export interface ChartZone {
   y1?: number;
   y2?: number;
   label: string;
+  labelPosition?: "insideTopLeft" | "insideTopRight" | "insideBottomLeft";
 }
 
 export interface ChartReferenceLine {
@@ -20,6 +20,7 @@ export interface ChartReferenceLine {
   value: number;
   label: string;
   kind: "neutral" | "cap" | "floor" | "trigger";
+  labelPosition?: "insideTopLeft" | "insideTopRight" | "right" | "left";
 }
 
 export interface PayoffChartMeta {
@@ -30,17 +31,11 @@ export interface PayoffChartMeta {
 
 export const PAYOFF_RANGE = { min: -0.5, max: 0.5, step: 0.01 };
 
-export function buildPayoffSeries(
-  config: StrategyConfig,
-  inputs: StrategyInputs,
-  feeEnabled: boolean,
-  annualFee: number
-): PayoffPoint[] {
+export function buildPayoffSeries(config: StrategyConfig, inputs: StrategyInputs): PayoffPoint[] {
   const points: PayoffPoint[] = [];
   for (let i = Math.round(PAYOFF_RANGE.min * 100); i <= Math.round(PAYOFF_RANGE.max * 100); i += 1) {
     const market = i / 100;
-    const gross = config.calculate(market, inputs);
-    const credited = applyFee(gross, feeEnabled, annualFee);
+    const credited = config.calculate(market, inputs);
     if (Number.isFinite(credited)) {
       points.push({ market, credited });
     }
@@ -48,64 +43,48 @@ export function buildPayoffSeries(
   return points;
 }
 
-export function getScenarioPoint(
-  config: StrategyConfig,
-  inputs: StrategyInputs,
-  marketReturn: number,
-  feeEnabled: boolean,
-  annualFee: number,
-  startingPremium: number
-) {
-  const gross = config.calculate(marketReturn, inputs);
-  const credited = applyFee(gross, feeEnabled, annualFee);
-  const endingValue = computeEndingValue(startingPremium, credited);
-
-  return { market: marketReturn, credited, endingValue };
-}
-
 export function buildPayoffChartMeta(strategyId: StrategyId, inputs: StrategyInputs): PayoffChartMeta {
   const buffer = Math.max(0, inputs.buffer ?? 0);
   const cap = inputs.cap;
   const floor = inputs.floor;
   const triggerRate = inputs.triggerRate;
-  const participationRate = inputs.participationRate;
 
   const zones: ChartZone[] = [];
   const lines: ChartReferenceLine[] = [
-    { axis: "x", value: 0, label: "0% market return", kind: "neutral" },
-    { axis: "y", value: 0, label: "0% credited return", kind: "neutral" }
+    { axis: "x", value: 0, label: "0% market", kind: "neutral", labelPosition: "insideTopLeft" },
+    { axis: "y", value: 0, label: "0% credited", kind: "neutral", labelPosition: "right" }
   ];
   const notes: string[] = [];
 
   const hasBuffer = ["performanceCap", "performanceParticipation", "precision", "dualPrecision"].includes(strategyId);
   if (hasBuffer && buffer > 0) {
-    zones.push({ kind: "buffer", x1: -buffer, x2: 0, label: `Buffer zone: first ${(buffer * 100).toFixed(0)}% of loss absorbed` });
-    notes.push(`Shaded vertical zone shows the first ${(buffer * 100).toFixed(0)}% of market loss absorbed.`);
+    zones.push({ kind: "buffer", x1: -buffer, x2: 0, label: `${(buffer * 100).toFixed(0)}% buffer`, labelPosition: "insideTopLeft" });
+    notes.push(`The shaded buffer zone absorbs the first ${(buffer * 100).toFixed(0)}% of market loss.`);
   }
 
   if (["performanceCap", "guard", "protectionCap"].includes(strategyId) && typeof cap === "number") {
-    lines.push({ axis: "y", value: cap, label: "Cap", kind: "cap" });
-    zones.push({ kind: "cap", y1: cap, y2: PAYOFF_RANGE.max, label: `Cap: gains above ${(cap * 100).toFixed(0)}% do not increase credited return` });
-    notes.push(`Horizontal ceiling shows the cap at ${(cap * 100).toFixed(1)}%; additional market gains above that level do not increase credited return.`);
+    lines.push({ axis: "y", value: cap, label: "Cap", kind: "cap", labelPosition: "right" });
+    zones.push({ kind: "cap", y1: cap, y2: PAYOFF_RANGE.max, label: "Cap zone", labelPosition: "insideTopRight" });
+    notes.push(`Upside is capped at ${(cap * 100).toFixed(1)}%.`);
   }
 
   if (strategyId === "guard" && typeof floor === "number") {
-    lines.push({ axis: "y", value: floor, label: "Floor", kind: "floor" });
-    zones.push({ kind: "floor", y1: PAYOFF_RANGE.min, y2: floor, label: `Floor: credited return will not drop below ${(floor * 100).toFixed(0)}%` });
-    notes.push(`Downside is limited by the floor at ${(floor * 100).toFixed(1)}%, even if markets fall more.`);
+    lines.push({ axis: "y", value: floor, label: "Floor", kind: "floor", labelPosition: "left" });
+    zones.push({ kind: "floor", y1: PAYOFF_RANGE.min, y2: floor, label: "Floor zone", labelPosition: "insideBottomLeft" });
+    notes.push(`The floor limits downside to ${(floor * 100).toFixed(1)}%.`);
   }
 
   if (["precision", "dualPrecision", "protectionTrigger"].includes(strategyId) && typeof triggerRate === "number") {
-    lines.push({ axis: "y", value: triggerRate, label: "Trigger credit", kind: "trigger" });
-    notes.push(`Flat payoff section highlights the trigger credit of ${(triggerRate * 100).toFixed(1)}% when conditions are met.`);
+    lines.push({ axis: "y", value: triggerRate, label: "Trigger", kind: "trigger", labelPosition: "left" });
+    notes.push(`Trigger credit is ${(triggerRate * 100).toFixed(1)}% when strategy conditions are met.`);
   }
 
   if (strategyId === "performanceParticipation") {
-    notes.push(`Participation rate is ${(participationRate ?? 1).toFixed(2)}×, which changes the slope of the upside payoff line.`);
+    notes.push(`Participation rate changes the slope of the upside line.`);
   }
 
   if (strategyId === "dualPrecision") {
-    notes.push("Flat segment from modest down markets through up markets shows the fixed credit inside the buffer range.");
+    notes.push("Dual Precision can still credit the trigger in modestly negative years inside the buffer.");
   }
 
   return { zones, lines, notes };

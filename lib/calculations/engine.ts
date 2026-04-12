@@ -1,31 +1,61 @@
-import { applyFee, computeEndingValue } from "@/lib/calculations/strategies";
+import { computeEndingValue } from "@/lib/calculations/strategies";
 import { buildPayoffSeries } from "@/lib/calculations/payoffVisualization";
-import { StrategyConfig, StrategyInputs, StrategyResult } from "@/types/strategy";
+import { strategyById } from "@/lib/strategyConfigs";
+import {
+  StrategyComparisonResult,
+  StrategyConfig,
+  StrategyId,
+  StrategyInputs,
+  StrategyResult
+} from "@/types/strategy";
 
 export function calculateStrategyOutcome(
   config: StrategyConfig,
   marketReturn: number,
   startingPremium: number,
-  feeEnabled: boolean,
-  annualFee: number,
-  inputs: StrategyInputs,
-  showNetOfFee: boolean
+  inputs: StrategyInputs
 ): StrategyResult {
-  const creditedReturnGross = config.calculate(marketReturn, inputs);
-  const creditedReturnNet = applyFee(creditedReturnGross, feeEnabled, annualFee);
-  const displayReturn = showNetOfFee ? creditedReturnNet : creditedReturnGross;
-  const endingValue = computeEndingValue(startingPremium, creditedReturnNet);
+  const creditedReturn = config.calculate(marketReturn, inputs);
+  const endingValue = computeEndingValue(startingPremium, creditedReturn);
   const dollarChange = endingValue - startingPremium;
 
   return {
-    creditedReturnGross,
-    creditedReturnNet: displayReturn,
+    creditedReturn,
     endingValue,
     dollarChange,
-    explanation: config.explainer(marketReturn, inputs, displayReturn)
+    explanation: config.explainer(marketReturn, inputs, creditedReturn)
   };
 }
 
-export function buildPayoffData(config: StrategyConfig, inputs: StrategyInputs, feeEnabled: boolean, annualFee: number) {
-  return buildPayoffSeries(config, inputs, feeEnabled, annualFee);
+export function buildPayoffData(config: StrategyConfig, inputs: StrategyInputs) {
+  return buildPayoffSeries(config, inputs);
+}
+
+export function visibleInputKeys(strategyId: StrategyId): Array<keyof StrategyInputs> {
+  return strategyById[strategyId].requiredInputs;
+}
+
+export function compareStrategyOutcomes(args: {
+  strategyA: StrategyConfig;
+  strategyB: StrategyConfig;
+  inputsA: StrategyInputs;
+  inputsB: StrategyInputs;
+  marketReturn: number;
+  startingPremium: number;
+}): StrategyComparisonResult {
+  const a = calculateStrategyOutcome(args.strategyA, args.marketReturn, args.startingPremium, args.inputsA);
+  const b = calculateStrategyOutcome(args.strategyB, args.marketReturn, args.startingPremium, args.inputsB);
+
+  const creditedDifference = b.creditedReturn - a.creditedReturn;
+  const endingValueDifference = b.endingValue - a.endingValue;
+  const winner = endingValueDifference === 0 ? "Tie" : endingValueDifference > 0 ? "B" : "A";
+
+  const summary =
+    winner === "Tie"
+      ? "Both strategies produce the same outcome in this scenario."
+      : winner === "B"
+        ? `Strategy B preserves $${Math.abs(endingValueDifference).toLocaleString(undefined, { maximumFractionDigits: 2 })} more than Strategy A in this market result.`
+        : `Strategy A preserves $${Math.abs(endingValueDifference).toLocaleString(undefined, { maximumFractionDigits: 2 })} more than Strategy B in this market result.`;
+
+  return { a, b, creditedDifference, endingValueDifference, winner, summary };
 }

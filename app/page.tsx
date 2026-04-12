@@ -7,8 +7,8 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { Field } from "@/components/shared/Field";
 import { strategyById, strategyConfigs } from "@/lib/strategyConfigs";
 import { StrategyId, StrategyInputs } from "@/types/strategy";
-import { calculateStrategyOutcome, buildPayoffData } from "@/lib/calculations/engine";
-import { pct } from "@/lib/formatters";
+import { calculateStrategyOutcome, buildPayoffData, visibleInputKeys } from "@/lib/calculations/engine";
+import { decimalToUiPercent, pct, uiPercentToDecimal } from "@/lib/formatters";
 import { PayoffChart } from "@/components/charts/PayoffChart";
 import { scenarioPresets } from "@/lib/scenarioPresets";
 import { ExplainerPanel } from "@/components/strategy/ExplainerPanel";
@@ -20,7 +20,7 @@ import { PresentationView } from "@/components/print/PresentationView";
 const tabs = [
   "Strategy Overview",
   "Interactive Scenario Builder",
-  "Compare Strategies",
+  "Compare Two Strategies",
   "How the Buffer/Floor Works",
   "Print / Presentation View"
 ] as const;
@@ -30,9 +30,6 @@ export default function HomePage() {
   const [strategyId, setStrategyId] = useState<StrategyId>("performanceCap");
   const [startingPremium, setStartingPremium] = useState(100000);
   const [marketReturn, setMarketReturn] = useState(0.08);
-  const [feeEnabled, setFeeEnabled] = useState(false);
-  const [annualFee, setAnnualFee] = useState(0.01);
-  const [showNetOfFee, setShowNetOfFee] = useState(true);
   const [roundToDollar, setRoundToDollar] = useState(false);
   const [clientName, setClientName] = useState("");
 
@@ -44,30 +41,27 @@ export default function HomePage() {
   const inputs = strategyInputsMap[strategyId] || strategy.defaults;
 
   const outcome = useMemo(
-    () =>
-      calculateStrategyOutcome(
-        strategy,
-        marketReturn,
-        startingPremium,
-        feeEnabled,
-        annualFee,
-        inputs,
-        showNetOfFee
-      ),
-    [strategy, marketReturn, startingPremium, feeEnabled, annualFee, inputs, showNetOfFee]
+    () => calculateStrategyOutcome(strategy, marketReturn, startingPremium, inputs),
+    [strategy, marketReturn, startingPremium, inputs]
   );
 
-  const payoffData = useMemo(
-    () => buildPayoffData(strategy, inputs, feeEnabled && showNetOfFee, annualFee),
-    [strategy, inputs, feeEnabled, annualFee, showNetOfFee]
-  );
+  const payoffData = useMemo(() => buildPayoffData(strategy, inputs), [strategy, inputs]);
 
-  const setInput = (key: keyof StrategyInputs, value: number | string) => {
+  const setDecimalInput = (key: keyof StrategyInputs, value: number) => {
     setStrategyInputsMap((prev) => ({
       ...prev,
-      [strategyId]: { ...prev[strategyId], [key]: typeof value === "number" ? Math.max(-1, Math.min(2, value)) : value }
+      [strategyId]: { ...prev[strategyId], [key]: value }
     }));
   };
+
+  const setLabelInput = (value: string) => {
+    setStrategyInputsMap((prev) => ({
+      ...prev,
+      [strategyId]: { ...prev[strategyId], labelOverride: value }
+    }));
+  };
+
+  const activeKeys = visibleInputKeys(strategyId);
 
   return (
     <main className="mx-auto max-w-[1400px] p-4 lg:p-8">
@@ -75,7 +69,7 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-4 text-sm lg:text-base">
           <strong>{inputs.labelOverride || strategy.label}</strong>
           <span>Market: {pct(marketReturn)}</span>
-          <span>Credited: {pct(outcome.creditedReturnNet)}</span>
+          <span>Credited: {pct(outcome.creditedReturn)}</span>
           <span>Ending: ${outcome.endingValue.toLocaleString(undefined, { maximumFractionDigits: roundToDollar ? 0 : 2 })}</span>
           <span>Protection: {strategy.protectionType}</span>
         </div>
@@ -96,7 +90,7 @@ export default function HomePage() {
       <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
         <aside className="no-print space-y-4">
           <Card>
-            <SectionHeader title="Assumptions" subtitle="Editable advisor inputs" />
+            <SectionHeader title="Assumptions" subtitle="Client-friendly one-year scenario" />
             <label className="mb-3 block text-sm font-medium">Strategy</label>
             <select
               value={strategyId}
@@ -107,7 +101,7 @@ export default function HomePage() {
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
-            <Field label="Starting premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} />
+            <Field label="Starting premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" />
             <div className="mt-4">
               <label className="text-sm font-medium">Market Return ({pct(marketReturn)})</label>
               <input
@@ -128,27 +122,34 @@ export default function HomePage() {
               ))}
             </div>
             <div className="mt-4 space-y-2 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={feeEnabled} onChange={(e) => setFeeEnabled(e.target.checked)} /> Fee enabled</label>
-              {feeEnabled && <Field label="Annual fee" value={annualFee} onChange={setAnnualFee} min={0} max={0.1} step={0.001} suffix="(decimal)" />}
-              <label className="flex items-center gap-2"><input type="checkbox" checked={showNetOfFee} onChange={(e) => setShowNetOfFee(e.target.checked)} /> Show net of fee</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={roundToDollar} onChange={(e) => setRoundToDollar(e.target.checked)} /> Round to nearest dollar</label>
             </div>
           </Card>
 
           <Card>
-            <SectionHeader title="Strategy Terms" subtitle="Customize live in meeting" />
+            <SectionHeader title="Strategy Terms" subtitle="Only relevant inputs are shown" />
             <input
               type="text"
               value={inputs.labelOverride || ""}
-              onChange={(e) => setInput("labelOverride", e.target.value)}
+              onChange={(e) => setLabelInput(e.target.value)}
               placeholder="Optional custom strategy label"
               className="mb-3 w-full rounded-xl border border-slate-300 p-2"
             />
-            <Field label="Buffer" value={inputs.buffer ?? 0.1} onChange={(v) => setInput("buffer", v)} min={0} max={0.4} step={0.005} suffix="decimal" />
-            <Field label="Floor" value={inputs.floor ?? -0.1} onChange={(v) => setInput("floor", v)} min={-0.4} max={0} step={0.005} suffix="decimal" />
-            <Field label="Cap" value={inputs.cap ?? 0.12} onChange={(v) => setInput("cap", v)} min={0} max={0.5} step={0.005} suffix="decimal" />
-            <Field label="Trigger rate" value={inputs.triggerRate ?? 0.09} onChange={(v) => setInput("triggerRate", v)} min={0} max={0.5} step={0.005} suffix="decimal" />
-            <Field label="Participation rate" value={inputs.participationRate ?? 1} onChange={(v) => setInput("participationRate", v)} min={0} max={2} step={0.01} suffix="decimal" />
+            {activeKeys.includes("buffer") && (
+              <Field label="Buffer" value={decimalToUiPercent(inputs.buffer ?? 0.1)} onChange={(v) => setDecimalInput("buffer", uiPercentToDecimal(Math.min(40, Math.max(0, v))))} min={0} max={40} step={0.5} />
+            )}
+            {activeKeys.includes("floor") && (
+              <Field label="Floor" value={decimalToUiPercent(inputs.floor ?? -0.1)} onChange={(v) => setDecimalInput("floor", uiPercentToDecimal(Math.min(0, Math.max(-40, v))))} min={-40} max={0} step={0.5} />
+            )}
+            {activeKeys.includes("cap") && (
+              <Field label="Cap" value={decimalToUiPercent(inputs.cap ?? 0.12)} onChange={(v) => setDecimalInput("cap", uiPercentToDecimal(Math.min(50, Math.max(0, v))))} min={0} max={50} step={0.5} />
+            )}
+            {activeKeys.includes("triggerRate") && (
+              <Field label="Trigger rate" value={decimalToUiPercent(inputs.triggerRate ?? 0.09)} onChange={(v) => setDecimalInput("triggerRate", uiPercentToDecimal(Math.min(20, Math.max(0, v))))} min={0} max={20} step={0.5} />
+            )}
+            {activeKeys.includes("participationRate") && (
+              <Field label="Participation rate" value={decimalToUiPercent(inputs.participationRate ?? 1)} onChange={(v) => setDecimalInput("participationRate", uiPercentToDecimal(Math.min(200, Math.max(0, v))))} min={0} max={200} step={5} />
+            )}
           </Card>
         </aside>
 
@@ -156,7 +157,7 @@ export default function HomePage() {
           <HeroOutcomeCard
             strategyName={inputs.labelOverride || strategy.label}
             marketReturn={marketReturn}
-            creditedReturn={outcome.creditedReturnNet}
+            creditedReturn={outcome.creditedReturn}
             endingValue={outcome.endingValue}
             dollarChange={outcome.dollarChange}
             explanation={outcome.explanation}
@@ -167,34 +168,36 @@ export default function HomePage() {
             <Card>
               <SectionHeader
                 title="Interactive Payoff Visualization"
-                subtitle="See how market performance maps to credited strategy return in real time"
+                subtitle="See how one market return maps to one credited return"
               />
               <PayoffChart
                 strategy={strategy}
                 inputs={inputs}
                 data={payoffData}
                 marketReturn={marketReturn}
-                creditedReturn={outcome.creditedReturnNet}
+                creditedReturn={outcome.creditedReturn}
                 startingPremium={startingPremium}
                 endingValue={outcome.endingValue}
+                scenarioExplanation={outcome.explanation}
               />
             </Card>
           )}
 
           {(tab === "How the Buffer/Floor Works" || tab === "Strategy Overview") && (
-            <ExplainerPanel strategy={strategy} marketReturn={marketReturn} creditedReturn={outcome.creditedReturnNet} inputs={inputs} />
+            <ExplainerPanel strategy={strategy} marketReturn={marketReturn} creditedReturn={outcome.creditedReturn} inputs={inputs} />
           )}
 
-          {tab === "Compare Strategies" && (
+          {tab === "Compare Two Strategies" && (
             <CompareStrategies
-              globalInputs={{ startingPremium, marketReturn, feeEnabled, annualFee, showNetOfFee, roundToDollar }}
-              inputMap={strategyInputsMap}
+              startingPremium={startingPremium}
+              marketReturn={marketReturn}
+              roundToDollar={roundToDollar}
             />
           )}
 
           {tab === "Strategy Overview" && <StrategyEducationCards />}
 
-          <AdvisorDetailsDrawer strategy={strategy} inputs={inputs} feeEnabled={feeEnabled} annualFee={annualFee} showNetOfFee={showNetOfFee} />
+          <AdvisorDetailsDrawer strategy={strategy} inputs={inputs} />
 
           {tab === "Print / Presentation View" && (
             <>
@@ -202,12 +205,18 @@ export default function HomePage() {
                 <label className="text-sm font-medium">Client name</label>
                 <input value={clientName} onChange={(e) => setClientName(e.target.value)} className="mt-2 w-full rounded-xl border p-2" />
               </Card>
-              <PresentationView strategy={inputs.labelOverride || strategy.label} clientName={clientName} />
+              <PresentationView
+                strategy={inputs.labelOverride || strategy.label}
+                clientName={clientName}
+                marketReturn={marketReturn}
+                result={outcome}
+                assumptions={activeKeys.map((key) => `${key}: ${pct((inputs[key] as number) ?? 0)}`)}
+              />
             </>
           )}
 
           <footer className="rounded-2xl bg-slate-900 p-4 text-xs leading-relaxed text-slate-200">
-            This tool is a simplified educational illustration for one-year indexed strategy concepts. It is not an official carrier illustration. Caps, trigger rates, participation rates, buffers, floors, fees, and available strategy terms can change. Hypothetical index performance shown does not predict future results. Index returns shown are price-return assumptions and do not include dividends unless otherwise stated. Product fees, riders, taxes, and surrender charges may materially affect actual results.
+            Educational illustration only. Actual contract terms, rates, fees, charges, and availability may vary.
           </footer>
         </section>
       </div>
