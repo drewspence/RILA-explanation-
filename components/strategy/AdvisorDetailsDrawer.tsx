@@ -7,16 +7,10 @@ import { StrategyConfig, StrategyInputs } from "@/types/strategy";
 
 export function AdvisorDetailsDrawer({
   strategy,
-  inputs,
-  feeEnabled,
-  annualFee,
-  showNetOfFee
+  inputs
 }: {
   strategy: StrategyConfig;
   inputs: StrategyInputs;
-  feeEnabled: boolean;
-  annualFee: number;
-  showNetOfFee: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -31,10 +25,10 @@ export function AdvisorDetailsDrawer({
             <strong>Formula:</strong> {strategy.formulaSummary}
           </p>
           <p>
-            <strong>Inputs:</strong> {JSON.stringify(inputs)}
+            <strong>Active inputs:</strong> {strategy.requiredInputs.join(", ")}
           </p>
           <p>
-            <strong>Fee treatment:</strong> {feeEnabled ? `Enabled (${(annualFee * 100).toFixed(2)}%).` : "Off."} {showNetOfFee ? "Displaying net return." : "Displaying gross return."}
+            <strong>Current terms:</strong> {JSON.stringify(inputs)}
           </p>
           <p>
             <strong>Implementation notes:</strong> Educational illustration only; editable assumptions.

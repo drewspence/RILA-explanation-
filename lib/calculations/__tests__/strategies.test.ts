@@ -7,7 +7,6 @@ import {
   precision,
   protectionCap,
   protectionTrigger,
-  applyFee,
   computeEndingValue
 } from "../strategies";
 
@@ -36,7 +35,6 @@ describe("strategy calculations", () => {
   it("15) Protection Cap +15% => +7%", () => close(protectionCap(0.15, { cap: 0.07 }), 0.07));
   it("16) Protection Cap -20% => 0%", () => close(protectionCap(-0.2, {}), 0));
 
-
   it("participation upside slope and buffer boundary", () => {
     close(performanceWithParticipation(0.1, { participationRate: 1.5, buffer: 0.1 }), 0.15);
     close(performanceWithParticipation(-0.1, { buffer: 0.1 }), 0);
@@ -59,9 +57,7 @@ describe("strategy calculations", () => {
     close(protectionCap(0.07, { cap: 0.07 }), 0.07);
   });
 
-  it("applies fee and computes ending value", () => {
-    const net = applyFee(0.08, true, 0.01);
-    close(net, 0.07);
-    close(computeEndingValue(100000, net), 107000);
+  it("computes ending value", () => {
+    close(computeEndingValue(100000, 0.07), 107000);
   });
 });

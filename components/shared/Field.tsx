@@ -8,13 +8,14 @@ interface FieldProps {
   suffix?: string;
 }
 
-export function Field({ label, value, onChange, min, max, step = 0.01, suffix = "" }: FieldProps) {
+export function Field({ label, value, onChange, min, max, step = 0.1, suffix = "%" }: FieldProps) {
   return (
     <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
       {label}
       <div className="flex items-center rounded-xl border border-slate-200 px-3 py-2">
         <input
           type="number"
+          inputMode="decimal"
           value={Number.isNaN(value) ? 0 : value}
           onChange={(e) => onChange(Number(e.target.value))}
           min={min}
