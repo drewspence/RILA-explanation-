@@ -58,7 +58,7 @@ export function PayoffChart({
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{scenarioExplanation}</div>
       </header>
 
-      <div className="relative h-[560px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-3">
+      <div data-testid="payoff-chart" className="relative h-[560px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-3">
         <ResponsiveContainer>
           <ComposedChart data={data} margin={{ top: 26, right: 55, bottom: 36, left: 22 }}>
             <CartesianGrid strokeDasharray="3 7" stroke="#cbd5e1" />
@@ -122,7 +122,7 @@ export function PayoffChart({
 
         <div className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-900 shadow-2xl" style={{ left: `${clamp(xPct, 3, 97)}%`, top: `${clamp(yPct, 7, 93)}%` }} />
 
-        <div className="pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl" style={{ left: `${clamp(xPct + 2, 6, 75)}%`, top: `${clamp(yPct - 4, 8, 80)}%` }}>
+        <div data-testid="active-scenario-card" className="pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl" style={{ left: `${clamp(xPct + 2, 6, 75)}%`, top: `${clamp(yPct - 4, 8, 80)}%` }}>
           <p className="font-semibold">Active scenario</p>
           <p className="mt-1">Market move: {pct(marketReturn)}</p>
           <p>Credited result: {pct(creditedReturn)}</p>

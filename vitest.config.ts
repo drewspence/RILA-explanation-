@@ -8,6 +8,8 @@ export default defineConfig({
     }
   },
   test: {
-    environment: "node"
+    environment: "node",
+    include: ["lib/**/*.test.ts"],
+    exclude: ["tests/playwright/**"]
   }
 });
