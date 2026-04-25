@@ -1,7 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, FileText, GitCompareArrows, LayoutDashboard } from "lucide-react";
+import {
+  BarChart3,
+  FileText,
+  GitCompareArrows,
+  Info,
+  LayoutDashboard,
+  MoonStar,
+  Scale,
+  Shield,
+  TrendingUp
+} from "lucide-react";
 import { Field } from "@/components/shared/Field";
 import { strategyById, strategyConfigs } from "@/lib/strategyConfigs";
 import { StrategyId, StrategyInputs, StrategyResult } from "@/types/strategy";
@@ -27,7 +37,7 @@ const scenarioSnapshots = [
 ];
 
 export default function HomePage() {
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("overview");
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("scenario");
   const [strategyId, setStrategyId] = useState<StrategyId>("performanceCap");
   const [startingPremium, setStartingPremium] = useState(100000);
   const [marketReturn, setMarketReturn] = useState(0.08);
@@ -73,31 +83,32 @@ export default function HomePage() {
   );
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 pb-12 pt-5 lg:px-8">
-      <header className="no-print mb-6 rounded-[28px] border border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-6 py-6 text-white shadow-2xl">
+    <main className="mx-auto max-w-[1900px] px-0 pb-12 pt-0">
+      <header className="no-print mb-0 border-b border-slate-800 bg-gradient-to-r from-[#031738] via-[#03224a] to-[#031738] px-6 py-4 text-white shadow-2xl lg:px-14">
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-300">RILA advisor platform</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight lg:text-4xl">Structured Outcome Studio</h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-300 lg:text-base">Separate recommendation, modeling, comparison, and presentation workflows with one consistent strategy engine.</p>
+            <h1 className="text-5xl font-semibold tracking-tight lg:text-6xl">RILA <span className="text-xl font-medium text-cyan-400">DEMO</span></h1>
           </div>
-          <button className="rounded-xl border border-slate-600 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20">Export Meeting Pack</button>
+          <div className="flex items-center gap-3">
+            <button className="rounded-xl border border-slate-500 bg-white/5 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-white/20">Save Scenario</button>
+            <button className="rounded-xl border border-slate-600 p-2.5 text-slate-300 transition hover:bg-white/10">
+              <MoonStar size={18} />
+            </button>
+          </div>
         </div>
-        <nav className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <nav className="mt-3 flex flex-wrap gap-2">
           {tabs.map((t) => {
-            const Icon = t.icon;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`inline-flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${
+                className={`inline-flex items-center justify-between rounded-lg border px-5 py-2.5 text-sm transition ${
                   tab === t.id
-                    ? "border-white/70 bg-white text-slate-900 shadow-lg"
-                    : "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-500"
+                    ? "border-cyan-300/70 bg-white/10 text-white shadow-lg"
+                    : "border-transparent bg-transparent text-slate-200 hover:border-slate-500"
                 }`}
               >
                 <span className="font-medium">{t.label}</span>
-                <Icon size={16} />
               </button>
             );
           })}
@@ -322,69 +333,139 @@ function ScenarioBuilder({
   outcome: StrategyResult;
   payoffData: Array<{ market: number; credited: number }>;
 }) {
-  return (
-    <section>
-      <header className="mb-4 rounded-2xl border border-slate-200 bg-white px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scenario Builder Workspace</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Model assumptions and see payoff behavior in real time</h2>
-      </header>
+  const currentStrategy = strategyInputs.labelOverride || strategy.label;
+  const bufferValue = decimalToUiPercent(strategyInputs.buffer ?? 0.1);
+  const capValue = decimalToUiPercent(strategyInputs.cap ?? 0.12);
+  const marketValue = decimalToUiPercent(marketReturn);
 
-      <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_320px]">
-        <aside className="no-print space-y-4 xl:sticky xl:top-4 xl:h-fit">
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Inputs</p>
-            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-400">Strategy</label>
-            <select value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
+  const strategySummary = [
+    { label: "Buffer", value: `${bufferValue.toFixed(0)}%` },
+    { label: "Cap", value: `${capValue.toFixed(0)}%` },
+    { label: "Type", value: strategy.protectionType === "Buffer" ? "Buffered Cap" : strategy.protectionType },
+    { label: "Participation", value: `${decimalToUiPercent(strategyInputs.participationRate ?? 1).toFixed(0)}%` },
+    { label: "Upside Limit", value: `${capValue.toFixed(0)}%` },
+    { label: "Protection Level", value: `First ${bufferValue.toFixed(0)}%` }
+  ];
+
+  return (
+    <section className="bg-[#f7f9fc]">
+      <div className="grid gap-0 xl:grid-cols-[390px_minmax(0,1fr)_420px]">
+        <aside className="no-print min-h-[calc(100vh-88px)] space-y-6 border-r border-slate-200 bg-white px-8 py-8">
+          <div className="space-y-3">
+            <h3 className="text-[42px] font-semibold tracking-tight text-slate-900">1. Market Scenario</h3>
+            <p className="text-xl leading-relaxed text-slate-600">Adjust the market return to see how strategies perform.</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[38px] font-semibold text-slate-900">Market Return</span>
+              <span className="rounded-xl bg-rose-100 px-4 py-2 text-4xl font-semibold text-rose-600">{pct(marketReturn)}</span>
+            </div>
+            <input type="range" min={-0.5} max={0.5} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-blue-900" />
+            <div className="flex justify-between text-3xl font-medium text-slate-500"><span>-50%</span><span>0%</span><span>50%</span></div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-6">
+            <h3 className="text-[42px] font-semibold tracking-tight text-slate-900">2. Strategy Selection</h3>
+            <p className="mt-2 text-xl text-slate-600">Choose the strategy you&apos;d like to explore.</p>
+            <select value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-4 w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 text-3xl font-medium text-slate-900">
               {strategyConfigs.map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
-            <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" theme="dark" />
-            <label className="text-sm font-medium">Market scenario ({pct(marketReturn)})</label>
-            <input type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
-            <div className="mt-2 flex justify-between text-[11px] text-slate-400"><span>-40%</span><span>0%</span><span>+40%</span></div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+          </div>
+
+          <div className="border-t border-slate-200 pt-6">
+            <h3 className="text-[42px] font-semibold tracking-tight text-slate-900">3. Strategy Terms</h3>
+            <p className="mt-2 text-xl text-slate-600">Adjust the terms of the strategy.</p>
+            <input type="text" value={strategyInputs.labelOverride || ""} onChange={(e) => setLabelInput(e.target.value)} placeholder="Optional strategy label" className="mb-4 mt-4 w-full rounded-xl border border-slate-300 px-3 py-2 text-base" />
+            {activeKeys.includes("buffer") && <Field label="Buffer" value={bufferValue} onChange={(v) => setDecimalInput("buffer", uiPercentToDecimal(Math.min(30, Math.max(5, v))))} min={5} max={30} step={1} />}
+            {activeKeys.includes("cap") && <Field label="Cap" value={capValue} onChange={(v) => setDecimalInput("cap", uiPercentToDecimal(Math.min(30, Math.max(5, v))))} min={5} max={30} step={1} />}
+            <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={50000} step={5000} suffix="" />
+            <label className="mt-3 flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={roundToDollar} onChange={(e) => setRoundToDollar(e.target.checked)} /> Round to nearest dollar</label>
+            <p className="mt-6 rounded-2xl bg-slate-100 p-4 text-base text-slate-600">These strategies do not protect against losses beyond the buffer and may underperform in strong markets.</p>
+          </div>
+        </aside>
+
+        <section className="space-y-6 px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-5xl font-semibold tracking-tight text-slate-900">How a {capValue.toFixed(0)}% Buffered Cap Works</h2>
+              <p className="mt-2 text-2xl text-slate-600">See how the strategy transforms market returns into your returns.</p>
+            </div>
+            <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-6 py-4 text-xl font-medium text-slate-600"><Info size={22} /> View Details</button>
+          </div>
+
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <PayoffChart strategy={strategy} inputs={strategyInputs} data={payoffData} marketReturn={marketReturn} creditedReturn={outcome.creditedReturn} startingPremium={startingPremium} endingValue={outcome.endingValue} scenarioExplanation={outcome.explanation} />
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 className="text-4xl font-semibold text-slate-900">What This Means</h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-3xl font-semibold text-slate-900">If the market drops 8%</p>
+                <p className="mt-2 text-xl text-slate-600">You lose 0%. The buffer absorbs the loss.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-3xl font-semibold text-slate-900">If the market drops 15%</p>
+                <p className="mt-2 text-xl text-slate-600">You lose 5%. The first 10% is absorbed.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-3xl font-semibold text-slate-900">If the market gains 12%</p>
+                <p className="mt-2 text-xl text-slate-600">You gain 10%. Your return is capped at 10%.</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6">
+            <p className="text-3xl font-semibold text-slate-900">Quick Scenarios</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               {scenarioPresets.map((p) => (
-                <button key={p.label} onClick={() => setMarketReturn(p.value)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-700">{p.label}</button>
+                <button key={p.label} onClick={() => setMarketReturn(p.value)} className={`rounded-2xl border px-4 py-3 text-left text-lg font-semibold ${Math.abs(marketReturn - p.value) < 0.0005 ? "border-blue-800 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
+                  Market {pct(p.value)}
+                  <span className="block text-sm font-medium text-slate-500">{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <aside className="space-y-4 border-l border-slate-200 bg-[#f7f9fc] px-8 py-8">
+          <div className="rounded-2xl border border-slate-900 bg-gradient-to-br from-[#06204a] to-[#04122b] p-6 text-white">
+            <p className="text-5xl font-semibold">Current Scenario</p>
+            <div className="mt-4 flex items-center justify-between text-2xl text-slate-200">
+              <span>Market Return</span>
+              <span className="rounded-xl bg-rose-900/60 px-4 py-1.5 font-semibold text-rose-100">{pct(marketReturn)}</span>
+            </div>
+            <div className="mt-5 border-t border-blue-200/20 pt-5">
+              <p className="text-2xl font-semibold text-slate-200">Your Strategy Return</p>
+              <p className="mt-1 text-7xl font-bold tracking-tight">{pct(outcome.creditedReturn)}</p>
+              <p className="mt-2 text-lg text-slate-300">You&apos;re protected by the {bufferValue.toFixed(0)}% buffer.</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 className="text-4xl font-semibold text-slate-900">Strategy Summary</h3>
+            <div className="mt-4 space-y-2">
+              {strategySummary.map((item) => (
+                <MetricRow key={item.label} label={item.label} value={item.value} />
               ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Strategy terms</p>
-            <input type="text" value={strategyInputs.labelOverride || ""} onChange={(e) => setLabelInput(e.target.value)} placeholder="Optional strategy label" className="mb-3 mt-3 w-full rounded-xl border border-slate-300 p-2 text-sm" />
-            {activeKeys.includes("buffer") && <Field label="Buffer" value={decimalToUiPercent(strategyInputs.buffer ?? 0.1)} onChange={(v) => setDecimalInput("buffer", uiPercentToDecimal(Math.min(40, Math.max(0, v))))} min={0} max={40} step={0.5} />}
-            {activeKeys.includes("floor") && <Field label="Floor" value={decimalToUiPercent(strategyInputs.floor ?? -0.1)} onChange={(v) => setDecimalInput("floor", uiPercentToDecimal(Math.min(0, Math.max(-40, v))))} min={-40} max={0} step={0.5} />}
-            {activeKeys.includes("cap") && <Field label="Cap" value={decimalToUiPercent(strategyInputs.cap ?? 0.12)} onChange={(v) => setDecimalInput("cap", uiPercentToDecimal(Math.min(50, Math.max(0, v))))} min={0} max={50} step={0.5} />}
-            {activeKeys.includes("triggerRate") && <Field label="Trigger" value={decimalToUiPercent(strategyInputs.triggerRate ?? 0.09)} onChange={(v) => setDecimalInput("triggerRate", uiPercentToDecimal(Math.min(20, Math.max(0, v))))} min={0} max={20} step={0.5} />}
-            {activeKeys.includes("participationRate") && <Field label="Participation" value={decimalToUiPercent(strategyInputs.participationRate ?? 1)} onChange={(v) => setDecimalInput("participationRate", uiPercentToDecimal(Math.min(200, Math.max(0, v))))} min={0} max={200} step={5} />}
-            <label className="mt-3 flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={roundToDollar} onChange={(e) => setRoundToDollar(e.target.checked)} /> Round to nearest dollar</label>
-          </div>
-        </aside>
-
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-xl lg:p-6">
-          <PayoffChart strategy={strategy} inputs={strategyInputs} data={payoffData} marketReturn={marketReturn} creditedReturn={outcome.creditedReturn} startingPremium={startingPremium} endingValue={outcome.endingValue} scenarioExplanation={outcome.explanation} />
-        </section>
-
-        <aside className="space-y-4 xl:sticky xl:top-4 xl:h-fit">
-          <div className="rounded-2xl border border-slate-900 bg-slate-950 p-5 text-white">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Live scenario</p>
-            <p className="mt-3 text-sm text-slate-300">{pct(marketReturn)} market</p>
-            <p className="mt-1 text-4xl font-semibold tracking-tight">{pct(outcome.creditedReturn)}</p>
-            <p className="mt-1 text-sm text-slate-300">Credited return</p>
-            <div className="mt-4 border-t border-slate-700 pt-4">
-              <p className="text-xs text-slate-400">Ending value</p>
-              <p className="text-2xl font-semibold">{currency(outcome.endingValue, roundToDollar)}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 className="text-4xl font-semibold text-slate-900">Key Benefits</h3>
+            <div className="mt-5 space-y-5">
+              <Benefit icon={<Shield className="text-blue-700" />} title="Downside Protection" copy={`The buffer helps protect against the first ${bufferValue.toFixed(0)}% of market losses.`} />
+              <Benefit icon={<TrendingUp className="text-emerald-600" />} title="Capped Growth" copy={`Participate in market gains up to the ${capValue.toFixed(0)}% cap.`} />
+              <Benefit icon={<Scale className="text-indigo-600" />} title="Defined Outcome" copy="Know your potential return range in any market condition." />
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Protection type</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{strategy.protectionType}</p>
-            <p className="mt-3 text-sm text-slate-700">{outcome.explanation}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tradeoff panel</p>
-            <p className="mt-2 text-sm text-slate-700">{strategy.tradeoff}</p>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 className="text-3xl font-semibold text-slate-900">Compare Strategies</h3>
+            <p className="mt-2 text-lg text-slate-600">See how this strategy stacks up against other options.</p>
+            <p className="mt-3 text-base text-slate-500">{currentStrategy}</p>
+            <p className="text-base text-slate-500">Market: {marketValue.toFixed(1)}%</p>
+            <p className="text-base text-slate-500">Ending value: {currency(outcome.endingValue, roundToDollar)}</p>
           </div>
         </aside>
       </div>
@@ -394,9 +475,21 @@ function ScenarioBuilder({
 
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-200 py-2 text-sm last:border-b-0 last:pb-0">
+    <div className="flex items-center justify-between border-b border-slate-200 py-2 text-2xl last:border-b-0 last:pb-0">
       <span className="text-slate-500">{label}</span>
       <span className="font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function Benefit({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="rounded-full bg-slate-100 p-2">{icon}</div>
+      <div>
+        <p className="text-2xl font-semibold text-slate-900">{title}</p>
+        <p className="text-lg text-slate-600">{copy}</p>
+      </div>
     </div>
   );
 }
