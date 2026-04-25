@@ -52,16 +52,18 @@ export function PayoffChart({
     <div className="space-y-4">
       <header className="mb-1 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Payoff stage</p>
-          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">Structured Outcome Diagram</h3>
+          <div className="flex items-center gap-8 text-[30px] font-medium text-slate-600">
+            <span className="inline-flex items-center gap-2"><span className="h-1 w-10 rounded-full bg-blue-900" />Your Strategy Return</span>
+            <span className="inline-flex items-center gap-2"><span className="h-1 w-10 rounded-full border-t-4 border-dashed border-slate-400" />Market Return</span>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{scenarioExplanation}</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{scenarioExplanation}</div>
       </header>
 
-      <div className="relative h-[560px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-3">
+      <div className="relative h-[720px] w-full overflow-hidden rounded-[24px] border border-slate-200 bg-white p-3">
         <ResponsiveContainer>
           <ComposedChart data={data} margin={{ top: 26, right: 55, bottom: 36, left: 22 }}>
-            <CartesianGrid strokeDasharray="3 7" stroke="#cbd5e1" />
+            <CartesianGrid strokeDasharray="3 7" stroke="#dbe3ef" />
 
             {regions.map((zone) => (
               <ReferenceArea key={zone.label} x1={zone.x1} x2={zone.x2} y1={zone.y1} y2={zone.y2} fill={zone.fill} fillOpacity={zone.opacity}>
@@ -80,16 +82,16 @@ export function PayoffChart({
               dataKey="market"
               domain={domain.x}
               tickFormatter={pct}
-              label={{ value: "Underlying index return", dy: 16, fill: "#0f172a", fontWeight: 600 }}
-              tick={{ fill: "#334155", fontSize: 12 }}
+              label={{ value: "Market Return", dy: 16, fill: "#0f172a", fontWeight: 600 }}
+              tick={{ fill: "#64748b", fontSize: 12 }}
             />
             <YAxis
               type="number"
               dataKey="credited"
               domain={domain.y}
               tickFormatter={pct}
-              label={{ value: "Credited return", angle: -90, dx: -6, fill: "#0f172a", fontWeight: 600 }}
-              tick={{ fill: "#334155", fontSize: 12 }}
+              label={{ value: "Return", angle: -90, dx: -6, fill: "#0f172a", fontWeight: 600 }}
+              tick={{ fill: "#64748b", fontSize: 12 }}
             />
 
             <Tooltip
@@ -108,13 +110,14 @@ export function PayoffChart({
               }}
             />
 
-            <Area type="monotone" dataKey="credited" stroke="none" fill="url(#premiumFill)" fillOpacity={0.9} isAnimationActive={false} />
-            <Line type="monotone" dataKey="credited" stroke="#0f172a" strokeWidth={4} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="market" stroke="#b8c2d6" strokeDasharray="7 5" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="credited" stroke="none" fill="url(#premiumFill)" fillOpacity={0.45} isAnimationActive={false} />
+            <Line type="monotone" dataKey="credited" stroke="#0b3186" strokeWidth={4} dot={false} isAnimationActive={false} />
 
             <defs>
               <linearGradient id="premiumFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#0f172a" stopOpacity={0.05} />
+                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.12} />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity={0.01} />
               </linearGradient>
             </defs>
           </ComposedChart>
@@ -122,7 +125,7 @@ export function PayoffChart({
 
         <div className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-900 shadow-2xl" style={{ left: `${clamp(xPct, 3, 97)}%`, top: `${clamp(yPct, 7, 93)}%` }} />
 
-        <div className="pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl" style={{ left: `${clamp(xPct + 2, 6, 75)}%`, top: `${clamp(yPct - 4, 8, 80)}%` }}>
+        <div className="pointer-events-none absolute max-w-[280px] rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-2xl" style={{ left: `${clamp(xPct + 2, 6, 75)}%`, top: `${clamp(yPct - 4, 8, 80)}%` }}>
           <p className="font-semibold">Active scenario</p>
           <p className="mt-1">Market move: {pct(marketReturn)}</p>
           <p>Credited result: {pct(creditedReturn)}</p>
