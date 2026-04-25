@@ -43,8 +43,18 @@ jobs:
           path: playwright-report/
           if-no-files-found: warn
 
-      - name: Upload Playwright test results
+      - name: Check for Playwright test-result artifacts
         if: always()
+        id: test_results_check
+        run: |
+          if find test-results/playwright -type f -print -quit 2>/dev/null | grep -q .; then
+            echo "has_results=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_results=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Playwright test results
+        if: always() && steps.test_results_check.outputs.has_results == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
@@ -53,12 +63,27 @@ jobs:
 
       - name: Publish QA summary
         if: always()
+        env:
+          HAS_TEST_RESULTS: ${{ steps.test_results_check.outputs.has_results }}
         run: |
-          {
-            echo "## Playwright QA Results";
-            echo "- Suite: \\`npm run qa:e2e\\`";
-            echo "- Base URL: \\`http://127.0.0.1:3000\\`";
-            echo "- Artifacts: \\`playwright-report\\` (HTML), \\`playwright-test-results\\` (screenshots/traces/videos/attachments).";
-            echo "- Open **Actions > this run > Artifacts** to download and inspect failures.";
-            echo "- Any failing test will fail this job automatically.";
-          } >> "$GITHUB_STEP_SUMMARY"
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## Playwright QA Results
+          - Suite: npm run qa:e2e
+          - Base URL: http://127.0.0.1:3000
+          - Artifact always uploaded: playwright-report (HTML report).
+          EOF
+
+          if [ "$HAS_TEST_RESULTS" = "true" ]; then
+            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
+          EOF
+          else
+            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - No test-results artifacts were produced in this run (common on clean passes when no failure-only artifacts are generated).
+          EOF
+          fi
+
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - Open Actions > this run > Artifacts to download and inspect outputs.
+          - Any failing Playwright test fails this job automatically.
+          EOF
