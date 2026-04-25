@@ -47,7 +47,8 @@ jobs:
         if: always()
         id: test_results_check
         run: |
-          if find test-results/playwright -type f -print -quit 2>/dev/null | grep -q .; then
+          RESULT_FILE_COUNT="$(find test-results/playwright -type f 2>/dev/null | wc -l | tr -d ' ')"
+          if [ "${RESULT_FILE_COUNT}" -gt 0 ]; then
             echo "has_results=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_results=false" >> "$GITHUB_OUTPUT"
@@ -58,13 +59,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
-          path: test-results/playwright/**
+          path: test-results/playwright
           if-no-files-found: warn
 
       - name: Publish QA summary
         if: always()
-        env:
-          HAS_TEST_RESULTS: ${{ steps.test_results_check.outputs.has_results }}
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           ## Playwright QA Results
@@ -73,7 +72,7 @@ jobs:
           - Artifact always uploaded: playwright-report (HTML report).
           EOF
 
-          if [ "$HAS_TEST_RESULTS" = "true" ]; then
+          if [ "${{ steps.test_results_check.outputs.has_results }}" = "true" ]; then
             cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
           EOF
