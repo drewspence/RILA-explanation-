@@ -73,7 +73,7 @@ export default function HomePage() {
   );
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 pb-12 pt-5 lg:px-8">
+    <main className="mx-auto max-w-[1600px] px-4 pb-12 pt-5 lg:px-8" data-testid="app-root">
       <header className="no-print mb-6 rounded-[28px] border border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-6 py-6 text-white shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
@@ -90,6 +90,7 @@ export default function HomePage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                data-testid={`tab-${t.id}`}
                 className={`inline-flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${
                   tab === t.id
                     ? "border-white/70 bg-white text-slate-900 shadow-lg"
@@ -323,7 +324,7 @@ function ScenarioBuilder({
   payoffData: Array<{ market: number; credited: number }>;
 }) {
   return (
-    <section>
+    <section data-testid="scenario-builder">
       <header className="mb-4 rounded-2xl border border-slate-200 bg-white px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scenario Builder Workspace</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Model assumptions and see payoff behavior in real time</h2>
@@ -334,16 +335,18 @@ function ScenarioBuilder({
           <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Inputs</p>
             <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-400">Strategy</label>
-            <select value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
+            <select data-testid="strategy-select" value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
               {strategyConfigs.map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
-            <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" theme="dark" />
+            <div data-testid="premium-input-wrap">
+              <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" theme="dark" />
+            </div>
             <label className="text-sm font-medium">Market scenario ({pct(marketReturn)})</label>
-            <input type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
+            <input data-testid="market-slider" type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
             <div className="mt-2 flex justify-between text-[11px] text-slate-400"><span>-40%</span><span>0%</span><span>+40%</span></div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2" data-testid="scenario-presets">
               {scenarioPresets.map((p) => (
                 <button key={p.label} onClick={() => setMarketReturn(p.value)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-700">{p.label}</button>
               ))}
@@ -370,11 +373,11 @@ function ScenarioBuilder({
           <div className="rounded-2xl border border-slate-900 bg-slate-950 p-5 text-white">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Live scenario</p>
             <p className="mt-3 text-sm text-slate-300">{pct(marketReturn)} market</p>
-            <p className="mt-1 text-4xl font-semibold tracking-tight">{pct(outcome.creditedReturn)}</p>
+              <p className="mt-1 text-4xl font-semibold tracking-tight" data-testid="live-credited-return">{pct(outcome.creditedReturn)}</p>
             <p className="mt-1 text-sm text-slate-300">Credited return</p>
             <div className="mt-4 border-t border-slate-700 pt-4">
               <p className="text-xs text-slate-400">Ending value</p>
-              <p className="text-2xl font-semibold">{currency(outcome.endingValue, roundToDollar)}</p>
+              <p className="text-2xl font-semibold" data-testid="live-ending-value">{currency(outcome.endingValue, roundToDollar)}</p>
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
