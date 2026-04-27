@@ -47,7 +47,12 @@ jobs:
         if: always()
         id: test_results_check
         run: |
-          RESULT_FILE_COUNT="$(find test-results/playwright -type f 2>/dev/null | wc -l | tr -d ' ')"
+          RESULT_FILE_COUNT="$(
+            find test-results/playwright \
+              \( -type d -name '.*' -prune \) -o \
+              \( -type f ! -name '.*' -print \) \
+              2>/dev/null | wc -l | tr -d ' '
+          )"
           printf 'result_file_count=%s\n' "${RESULT_FILE_COUNT}" >> "$GITHUB_OUTPUT"
           if [ "${RESULT_FILE_COUNT}" -gt 0 ]; then
             printf 'has_results=true\n' >> "$GITHUB_OUTPUT"
@@ -67,6 +72,7 @@ jobs:
         with:
           name: playwright-test-results
           path: test-results/playwright
+          include-hidden-files: false
           if-no-files-found: warn
 
       - name: Publish QA summary header
