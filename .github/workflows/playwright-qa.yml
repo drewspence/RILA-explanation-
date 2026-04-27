@@ -49,20 +49,20 @@ jobs:
         run: |
           RESULT_FILE_COUNT="$(find test-results/playwright -type f 2>/dev/null | wc -l | tr -d ' ')"
           if [ "${RESULT_FILE_COUNT}" -gt 0 ]; then
-            echo "has_results=true" >> "$GITHUB_OUTPUT"
+            printf 'has_results=true\n' >> "$GITHUB_OUTPUT"
           else
-            echo "has_results=false" >> "$GITHUB_OUTPUT"
+            printf 'has_results=false\n' >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload Playwright test results
-        if: always() && steps.test_results_check.outputs.has_results == 'true'
+        if: steps.test_results_check.outputs.has_results == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
           path: test-results/playwright
           if-no-files-found: warn
 
-      - name: Publish QA summary
+      - name: Publish QA summary header
         if: always()
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
@@ -72,16 +72,23 @@ jobs:
           - Artifact always uploaded: playwright-report (HTML report).
           EOF
 
-          if [ "${{ steps.test_results_check.outputs.has_results }}" = "true" ]; then
-            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish QA summary (test-results artifact present)
+        if: steps.test_results_check.outputs.has_results == 'true'
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
           EOF
-          else
-            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish QA summary (no test-results artifact)
+        if: steps.test_results_check.outputs.has_results != 'true'
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - No test-results artifacts were produced in this run (common on clean passes when no failure-only artifacts are generated).
           EOF
-          fi
 
+      - name: Publish QA summary footer
+        if: always()
+        run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - Open Actions > this run > Artifacts to download and inspect outputs.
           - Any failing Playwright test fails this job automatically.
