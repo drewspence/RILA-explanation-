@@ -48,14 +48,21 @@ jobs:
         id: test_results_check
         run: |
           RESULT_FILE_COUNT="$(find test-results/playwright -type f 2>/dev/null | wc -l | tr -d ' ')"
+          printf 'result_file_count=%s\n' "${RESULT_FILE_COUNT}" >> "$GITHUB_OUTPUT"
           if [ "${RESULT_FILE_COUNT}" -gt 0 ]; then
             printf 'has_results=true\n' >> "$GITHUB_OUTPUT"
           else
             printf 'has_results=false\n' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Debug Playwright test-result outputs
+        if: always()
+        run: |
+          echo "has_results=${{ steps.test_results_check.outputs.has_results }}"
+          echo "result_file_count=${{ steps.test_results_check.outputs.result_file_count }}"
+
       - name: Upload Playwright test results
-        if: steps.test_results_check.outputs.has_results == 'true'
+        if: ${{ steps.test_results_check.outputs.has_results == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
@@ -73,14 +80,14 @@ jobs:
           EOF
 
       - name: Publish QA summary (test-results artifact present)
-        if: steps.test_results_check.outputs.has_results == 'true'
+        if: ${{ steps.test_results_check.outputs.has_results == 'true' }}
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
           EOF
 
       - name: Publish QA summary (no test-results artifact)
-        if: steps.test_results_check.outputs.has_results != 'true'
+        if: ${{ steps.test_results_check.outputs.has_results != 'true' }}
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
           - No test-results artifacts were produced in this run (common on clean passes when no failure-only artifacts are generated).
