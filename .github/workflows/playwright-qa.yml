@@ -1,0 +1,108 @@
+name: Playwright QA
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run Playwright QA suite
+        env:
+          CI: "true"
+          PLAYWRIGHT_LOCAL_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_WEB_SERVER_COMMAND: npm run start -- --hostname 127.0.0.1 --port 3000
+        run: npm run qa:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: warn
+
+      - name: Check for Playwright test-result artifacts
+        if: always()
+        id: test_results_check
+        run: |
+          RESULT_FILE_COUNT="$(
+            find test-results/playwright \
+              \( -type d -name '.*' -prune \) -o \
+              \( -type f ! -name '.*' -print \) \
+              2>/dev/null | wc -l | tr -d ' '
+          )"
+          printf 'result_file_count=%s\n' "${RESULT_FILE_COUNT}" >> "$GITHUB_OUTPUT"
+          if [ "${RESULT_FILE_COUNT}" -gt 0 ]; then
+            printf 'has_results=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'has_results=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Debug Playwright test-result outputs
+        if: always()
+        run: |
+          echo "has_results=${{ steps.test_results_check.outputs.has_results }}"
+          echo "result_file_count=${{ steps.test_results_check.outputs.result_file_count }}"
+
+      - name: Upload Playwright test results
+        if: ${{ steps.test_results_check.outputs.has_results == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/playwright
+          include-hidden-files: false
+          if-no-files-found: warn
+
+      - name: Publish QA summary header
+        if: always()
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## Playwright QA Results
+          - Suite: npm run qa:e2e
+          - Base URL: http://127.0.0.1:3000
+          - Artifact always uploaded: playwright-report (HTML report).
+          EOF
+
+      - name: Publish QA summary (test-results artifact present)
+        if: ${{ steps.test_results_check.outputs.has_results == 'true' }}
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
+          EOF
+
+      - name: Publish QA summary (no test-results artifact)
+        if: ${{ steps.test_results_check.outputs.has_results != 'true' }}
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - No test-results artifacts were produced in this run (common on clean passes when no failure-only artifacts are generated).
+          EOF
+
+      - name: Publish QA summary footer
+        if: always()
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          - Open Actions > this run > Artifacts to download and inspect outputs.
+          - Any failing Playwright test fails this job automatically.
+          EOF

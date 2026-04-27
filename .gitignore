@@ -3,3 +3,6 @@ node_modules
 coverage
 .DS_Store
 npm-debug.log*
+playwright-report
+test-results
+tests/playwright/specs/qa-visual.spec.ts-snapshots
