@@ -4,17 +4,17 @@ import { byTestIdOrRole, liveScenarioValues, tab } from "../helpers/selectors";
 import { expectNoHorizontalOverflow, expectNoVisibleOverlap, expectVisibleWithinViewport } from "../helpers/uiAssertions";
 
 test.describe("core QA flows", () => {
-  test("app loads and main controls are usable without major runtime errors", async ({ page }) => {
+  test("app loads to scenario builder and main controls are usable", async ({ page }) => {
     const consoleMonitor = monitorConsoleErrors(page);
 
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: /structured outcome studio/i })).toBeVisible();
-    await expect(tab(page, "overview")).toBeVisible();
     await expect(tab(page, "scenario")).toBeVisible();
     await expect(tab(page, "compare")).toBeVisible();
-
-    await tab(page, "scenario").click();
+    await expect(tab(page, "print")).toBeVisible();
+    await expect(page.getByTestId("tab-overview")).toHaveCount(0);
+    await expect(page.getByTestId("scenario-builder")).toBeVisible();
 
     const strategySelect = byTestIdOrRole(page, "strategy-select", "combobox");
     const marketSlider = page.getByTestId("market-slider");
@@ -29,7 +29,6 @@ test.describe("core QA flows", () => {
 
   test("scenario presets and slider change summary values and chart annotations", async ({ page }) => {
     await page.goto("/");
-    await tab(page, "scenario").click();
 
     const values = liveScenarioValues(page);
     const initialEndingValue = (await values.endingValue.textContent())?.trim();
@@ -51,7 +50,7 @@ test.describe("core QA flows", () => {
     await expect(values.endingValue).not.toHaveText(initialEndingValue ?? "");
   });
 
-  test("compare flow remains interactive and responsive layout avoids obvious clipping", async ({ page }) => {
+  test("compare flow remains interactive and responsive", async ({ page }) => {
     await page.goto("/");
     await tab(page, "compare").click();
 
@@ -61,11 +60,10 @@ test.describe("core QA flows", () => {
     await expect(strategySelectors).toHaveCount(2);
 
     await strategySelectors.nth(1).selectOption("guard");
-    await expect(page.getByText(/best for this scenario/i)).toBeVisible();
+    await expect(page.getByText(/credited return delta/i)).toBeVisible();
 
     await expectNoHorizontalOverflow(page);
     await expectNoVisibleOverlap(page, [
-      '[data-testid="tab-overview"]',
       '[data-testid="tab-scenario"]',
       '[data-testid="tab-compare"]',
       '[data-testid="tab-print"]'

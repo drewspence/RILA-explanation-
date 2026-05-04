@@ -27,4 +27,27 @@ describe("engine helpers", () => {
     expect(visibleInputKeys("protectionCap")).toEqual(["cap"]);
     expect(visibleInputKeys("protectionTrigger")).toEqual(["triggerRate"]);
   });
+
+  it("keeps active scenario values aligned with the same payoff function", () => {
+    const strategy = strategyById.performanceCap;
+    const inputs = { buffer: 0.1, cap: 0.12 };
+    const payoff = [
+      -0.4, -0.25, -0.12, -0.1, -0.06, 0, 0.08, 0.12, 0.2, 0.4
+    ].map((marketReturn) => ({
+      marketReturn,
+      outcome: compareStrategyOutcomes({
+        strategyA: strategy,
+        strategyB: strategy,
+        inputsA: inputs,
+        inputsB: inputs,
+        marketReturn,
+        startingPremium: 100000
+      }).a.creditedReturn
+    }));
+
+    payoff.forEach(({ marketReturn, outcome }) => {
+      expect(outcome).toBeCloseTo(strategy.calculate(marketReturn, inputs), 10);
+    });
+  });
+
 });

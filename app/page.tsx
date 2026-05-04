@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, FileText, GitCompareArrows, LayoutDashboard } from "lucide-react";
+import { BarChart3, FileText, GitCompareArrows } from "lucide-react";
 import { Field } from "@/components/shared/Field";
 import { strategyById, strategyConfigs } from "@/lib/strategyConfigs";
 import { StrategyId, StrategyInputs, StrategyResult } from "@/types/strategy";
@@ -13,21 +13,13 @@ import { CompareStrategies } from "@/components/compare/CompareStrategies";
 import { PresentationView } from "@/components/print/PresentationView";
 
 const tabs = [
-  { id: "overview", label: "Advisor Dashboard", icon: LayoutDashboard },
   { id: "scenario", label: "Scenario Builder", icon: BarChart3 },
   { id: "compare", label: "Compare Strategies", icon: GitCompareArrows },
   { id: "print", label: "Presentation View", icon: FileText }
 ] as const;
 
-const scenarioSnapshots = [
-  { label: "Up market", value: 0.18 },
-  { label: "Flat market", value: 0 },
-  { label: "Mild down", value: -0.08 },
-  { label: "Severe down", value: -0.25 }
-];
-
 export default function HomePage() {
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("overview");
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("scenario");
   const [strategyId, setStrategyId] = useState<StrategyId>("performanceCap");
   const [startingPremium, setStartingPremium] = useState(100000);
   const [marketReturn, setMarketReturn] = useState(0.08);
@@ -63,27 +55,18 @@ export default function HomePage() {
   };
 
   const activeKeys = visibleInputKeys(strategyId);
-  const snapshots = useMemo(
-    () =>
-      scenarioSnapshots.map((snapshot) => ({
-        ...snapshot,
-        result: calculateStrategyOutcome(strategy, snapshot.value, startingPremium, inputs)
-      })),
-    [strategy, startingPremium, inputs]
-  );
 
   return (
     <main className="mx-auto max-w-[1600px] px-4 pb-12 pt-5 lg:px-8" data-testid="app-root">
-      <header className="no-print mb-6 rounded-[28px] border border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-6 py-6 text-white shadow-2xl">
+      <header className="no-print mb-6 rounded-[28px] border border-slate-200 bg-white px-6 py-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-300">RILA advisor platform</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight lg:text-4xl">Structured Outcome Studio</h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-300 lg:text-base">Separate recommendation, modeling, comparison, and presentation workflows with one consistent strategy engine.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">RILA explanation tool</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">Structured Outcome Studio</h1>
+            <p className="mt-2 max-w-3xl text-sm text-slate-600 lg:text-base">A client-facing visual walkthrough for how different RILA payoff designs behave under one market scenario.</p>
           </div>
-          <button className="rounded-xl border border-slate-600 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20">Export Meeting Pack</button>
         </div>
-        <nav className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <nav className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {tabs.map((t) => {
             const Icon = t.icon;
             return (
@@ -93,8 +76,8 @@ export default function HomePage() {
                 data-testid={`tab-${t.id}`}
                 className={`inline-flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${
                   tab === t.id
-                    ? "border-white/70 bg-white text-slate-900 shadow-lg"
-                    : "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-500"
+                    ? "border-slate-900 bg-slate-900 text-white shadow"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
                 }`}
               >
                 <span className="font-medium">{t.label}</span>
@@ -104,22 +87,6 @@ export default function HomePage() {
           })}
         </nav>
       </header>
-
-      {tab === "overview" && (
-        <AdvisorDashboard
-          strategyName={inputs.labelOverride || strategy.label}
-          strategyId={strategy.id}
-          strategyDescription={strategy.description}
-          strategyTradeoff={strategy.tradeoff}
-          strongestWhen={strategy.strongestWhen}
-          strategyInputs={inputs}
-          outcome={outcome}
-          marketReturn={marketReturn}
-          snapshots={snapshots}
-          clientName={clientName}
-          setClientName={setClientName}
-        />
-      )}
 
       {tab === "scenario" && (
         <ScenarioBuilder
@@ -142,7 +109,7 @@ export default function HomePage() {
       )}
 
       {tab === "compare" && (
-        <CompareStrategies startingPremium={startingPremium} marketReturn={marketReturn} roundToDollar={roundToDollar} />
+        <CompareStrategies startingPremium={startingPremium} marketReturn={marketReturn} setMarketReturn={setMarketReturn} roundToDollar={roundToDollar} />
       )}
 
       {tab === "print" && (
@@ -159,134 +126,6 @@ export default function HomePage() {
         />
       )}
     </main>
-  );
-}
-
-function AdvisorDashboard({
-  strategyName,
-  strategyId,
-  strategyDescription,
-  strategyTradeoff,
-  strongestWhen,
-  strategyInputs,
-  outcome,
-  marketReturn,
-  snapshots,
-  clientName,
-  setClientName
-}: {
-  strategyName: string;
-  strategyId: StrategyId;
-  strategyDescription: string;
-  strategyTradeoff: string;
-  strongestWhen: string;
-  strategyInputs: StrategyInputs;
-  outcome: StrategyResult;
-  marketReturn: number;
-  snapshots: Array<{ label: string; value: number; result: StrategyResult }>;
-  clientName: string;
-  setClientName: (name: string) => void;
-}) {
-  const downside = strategyId.includes("protection")
-    ? "Client is insulated from negative index years (credited 0% minimum)."
-    : strategyInputs.floor
-      ? `Downside floor limits losses to ${pct(strategyInputs.floor)}.`
-      : strategyInputs.buffer
-        ? `First ${pct(strategyInputs.buffer)} of downside is buffered before losses apply.`
-        : "Downside is linked to market behavior.";
-
-  const upside = strategyInputs.cap
-    ? `Upside participation is capped at ${pct(strategyInputs.cap)}.`
-    : strategyInputs.triggerRate
-      ? `Upside is a preset trigger credit of ${pct(strategyInputs.triggerRate)} in qualifying years.`
-      : strategyInputs.participationRate
-        ? `Upside participates at ${pct(strategyInputs.participationRate, 0)} of index gains.`
-        : "Upside varies by design.";
-
-  return (
-    <section className="space-y-6">
-      <article className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-xl">
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Top recommendation</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{strategyName}</h2>
-            <p className="mt-3 text-base text-slate-700">{strategyDescription}</p>
-            <div className="mt-6 space-y-2 text-sm text-slate-700">
-              <p><span className="font-semibold text-slate-900">Recommendation summary:</span> For the current {pct(marketReturn)} market assumption, this structure credits {pct(outcome.creditedReturn)} with projected ending value {currency(outcome.endingValue)}.</p>
-              <p><span className="font-semibold text-slate-900">Downside protection:</span> {downside}</p>
-              <p><span className="font-semibold text-slate-900">Upside tradeoff:</span> {upside}</p>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current scenario outcome</p>
-            <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{currency(outcome.endingValue)}</p>
-            <p className="mt-1 text-sm text-slate-600">Ending value from {currency(100000)} baseline</p>
-            <div className="mt-5 grid gap-3 text-sm">
-              <MetricRow label="Market assumption" value={pct(marketReturn)} />
-              <MetricRow label="Credited return" value={pct(outcome.creditedReturn)} />
-              <MetricRow label="Protection type" value={strategyId.includes("protection") ? "Principal" : "Buffered/Floor"} />
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-lg">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.17em] text-slate-500">Scenario snapshot strip</p>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {snapshots.map((snapshot) => (
-            <div key={snapshot.label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{snapshot.label}</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{currency(snapshot.result.endingValue)}</p>
-              <p className="text-xs text-slate-600">Credited {pct(snapshot.result.creditedReturn)}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-2">
-        <article className="rounded-[22px] border border-slate-200 bg-white p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Key terms at a glance</h3>
-          <div className="mt-4 grid gap-2 text-sm">
-            <MetricRow label="Buffer" value={strategyInputs.buffer ? pct(strategyInputs.buffer) : "N/A"} />
-            <MetricRow label="Cap" value={strategyInputs.cap ? pct(strategyInputs.cap) : "N/A"} />
-            <MetricRow label="Trigger" value={strategyInputs.triggerRate ? pct(strategyInputs.triggerRate) : "N/A"} />
-            <MetricRow label="Floor" value={strategyInputs.floor ? pct(strategyInputs.floor) : "N/A"} />
-            <MetricRow label="Participation" value={strategyInputs.participationRate ? pct(strategyInputs.participationRate, 0) : "N/A"} />
-            <MetricRow label="Term" value="1-year illustration" />
-          </div>
-        </article>
-
-        <article className="rounded-[22px] border border-slate-200 bg-white p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Advisor talking points</h3>
-          <div className="mt-4 space-y-4 text-sm text-slate-700">
-            <div>
-              <p className="font-semibold text-slate-900">What this strategy is designed to do</p>
-              <p>{strategyDescription}</p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">What the client is giving up</p>
-              <p>{strategyTradeoff}</p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">When this tends to work best</p>
-              <p>{strongestWhen}</p>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <article className="rounded-[22px] border border-slate-200 bg-white p-6">
-        <h3 className="text-lg font-semibold text-slate-900">Meeting prep notes</h3>
-        <p className="mt-2 text-sm text-slate-600">Capture client-specific notes before moving to presentation mode.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-[220px_1fr]">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client name</label>
-            <input value={clientName} onChange={(e) => setClientName(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-          </div>
-          <textarea placeholder="Suitability notes, goals, and objection handling prompts..." className="min-h-[110px] w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-      </article>
-    </section>
   );
 }
 
@@ -326,29 +165,29 @@ function ScenarioBuilder({
   return (
     <section data-testid="scenario-builder">
       <header className="mb-4 rounded-2xl border border-slate-200 bg-white px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scenario Builder Workspace</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Model assumptions and see payoff behavior in real time</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scenario Builder</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Choose assumptions and show how the strategy credits returns</h2>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_320px]">
         <aside className="no-print space-y-4 xl:sticky xl:top-4 xl:h-fit">
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Inputs</p>
-            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-400">Strategy</label>
-            <select data-testid="strategy-select" value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-800">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Inputs</p>
+            <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">Strategy</label>
+            <select data-testid="strategy-select" value={strategyId} onChange={(e) => setStrategyId(e.target.value as StrategyId)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
               {strategyConfigs.map((s) => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
             <div data-testid="premium-input-wrap">
-              <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" theme="dark" />
+              <Field label="Premium" value={startingPremium} onChange={setStartingPremium} min={0} step={1000} suffix="" />
             </div>
             <label className="text-sm font-medium">Market scenario ({pct(marketReturn)})</label>
-            <input data-testid="market-slider" type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
-            <div className="mt-2 flex justify-between text-[11px] text-slate-400"><span>-40%</span><span>0%</span><span>+40%</span></div>
+            <input data-testid="market-slider" type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-2 w-full accent-slate-700" />
+            <div className="mt-2 flex justify-between text-[11px] text-slate-500"><span>-40%</span><span>0%</span><span>+40%</span></div>
             <div className="mt-3 grid grid-cols-2 gap-2" data-testid="scenario-presets">
               {scenarioPresets.map((p) => (
-                <button key={p.label} onClick={() => setMarketReturn(p.value)} className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-700">{p.label}</button>
+                <button key={p.label} onClick={() => setMarketReturn(p.value)} className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs hover:bg-slate-100">{p.label}</button>
               ))}
             </div>
           </div>
@@ -365,41 +204,28 @@ function ScenarioBuilder({
           </div>
         </aside>
 
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-xl lg:p-6">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm lg:p-6">
           <PayoffChart strategy={strategy} inputs={strategyInputs} data={payoffData} marketReturn={marketReturn} creditedReturn={outcome.creditedReturn} startingPremium={startingPremium} endingValue={outcome.endingValue} scenarioExplanation={outcome.explanation} />
         </section>
 
         <aside className="space-y-4 xl:sticky xl:top-4 xl:h-fit">
-          <div className="rounded-2xl border border-slate-900 bg-slate-950 p-5 text-white">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Live scenario</p>
-            <p className="mt-3 text-sm text-slate-300">{pct(marketReturn)} market</p>
-              <p className="mt-1 text-4xl font-semibold tracking-tight" data-testid="live-credited-return">{pct(outcome.creditedReturn)}</p>
-            <p className="mt-1 text-sm text-slate-300">Credited return</p>
-            <div className="mt-4 border-t border-slate-700 pt-4">
-              <p className="text-xs text-slate-400">Ending value</p>
-              <p className="text-2xl font-semibold" data-testid="live-ending-value">{currency(outcome.endingValue, roundToDollar)}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live scenario</p>
+            <p className="mt-3 text-sm text-slate-600">{pct(marketReturn)} market</p>
+            <p className="mt-1 text-4xl font-semibold tracking-tight text-slate-900" data-testid="live-credited-return">{pct(outcome.creditedReturn)}</p>
+            <p className="mt-1 text-sm text-slate-600">Credited return</p>
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <p className="text-xs text-slate-500">Ending value</p>
+              <p className="text-2xl font-semibold text-slate-950" data-testid="live-ending-value">{currency(outcome.endingValue, roundToDollar)}</p>
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Protection type</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{strategy.protectionType}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What this means</p>
             <p className="mt-3 text-sm text-slate-700">{outcome.explanation}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tradeoff panel</p>
-            <p className="mt-2 text-sm text-slate-700">{strategy.tradeoff}</p>
+            <p className="mt-3 text-sm text-slate-700">{strategy.tradeoff}</p>
           </div>
         </aside>
       </div>
     </section>
-  );
-}
-
-function MetricRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-slate-200 py-2 text-sm last:border-b-0 last:pb-0">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-semibold text-slate-900">{value}</span>
-    </div>
   );
 }

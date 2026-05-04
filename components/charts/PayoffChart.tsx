@@ -7,6 +7,7 @@ import {
   Label,
   Line,
   ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -44,34 +45,30 @@ export function PayoffChart({
 
   const regions = getStrategyRegions(strategy.id, inputs, domain);
   const markers = getThresholdMarkers(strategy.id, inputs);
-
-  const xPct = ((marketReturn - domain.x[0]) / (domain.x[1] - domain.x[0])) * 100;
-  const yPct = ((domain.y[1] - creditedReturn) / (domain.y[1] - domain.y[0])) * 100;
+  const markerCount = markers.length;
+  const bubblePositionClass = marketReturn >= 0.2 ? "right-6 top-6" : "left-6 top-6";
 
   return (
     <div className="space-y-4">
       <header className="mb-1 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Payoff stage</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Payoff chart</p>
           <h3 className="text-2xl font-semibold tracking-tight text-slate-950">Structured Outcome Diagram</h3>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{scenarioExplanation}</div>
       </header>
 
-      <div data-testid="payoff-chart" className="relative h-[560px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-3">
+      <div data-testid="payoff-chart" className="relative h-[640px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-4">
         <ResponsiveContainer>
-          <ComposedChart data={data} margin={{ top: 26, right: 55, bottom: 36, left: 22 }}>
+          <ComposedChart data={data} margin={{ top: 44, right: 92, bottom: 56, left: 74 }}>
             <CartesianGrid strokeDasharray="3 7" stroke="#cbd5e1" />
 
             {regions.map((zone) => (
-              <ReferenceArea key={zone.label} x1={zone.x1} x2={zone.x2} y1={zone.y1} y2={zone.y2} fill={zone.fill} fillOpacity={zone.opacity}>
-                <Label value={zone.label} position={zone.labelPosition} fill={zone.labelColor} fontSize={12} fontWeight={600} />
-              </ReferenceArea>
+              <ReferenceArea key={zone.label} x1={zone.x1} x2={zone.x2} y1={zone.y1} y2={zone.y2} fill={zone.fill} fillOpacity={zone.opacity} />
             ))}
 
-            {markers.map((line) => (
-              <ReferenceLine key={line.label} {...(line.axis === "x" ? { x: line.value } : { y: line.value })} stroke={line.color} strokeWidth={2.4} strokeDasharray={line.dashed ? "6 4" : undefined}>
-                <Label value={line.label} fill={line.color} fontWeight={700} fontSize={11} position={line.position} />
+            {markers.map((line, index) => (
+              <ReferenceLine key={line.label} {...(line.axis === "x" ? { x: line.value } : { y: line.value })} stroke={line.color} strokeWidth={2} strokeDasharray={line.dashed ? "6 4" : undefined}>
+                <Label value={line.label} fill={line.color} fontWeight={700} fontSize={11} position={line.position} dy={line.axis === "y" ? -12 + index * (markerCount > 3 ? 10 : 12) : undefined} />
               </ReferenceLine>
             ))}
 
@@ -80,7 +77,7 @@ export function PayoffChart({
               dataKey="market"
               domain={domain.x}
               tickFormatter={pct}
-              label={{ value: "Underlying index return", dy: 16, fill: "#0f172a", fontWeight: 600 }}
+              label={{ value: "Market return", dy: 26, fill: "#0f172a", fontWeight: 600 }}
               tick={{ fill: "#334155", fontSize: 12 }}
             />
             <YAxis
@@ -88,7 +85,7 @@ export function PayoffChart({
               dataKey="credited"
               domain={domain.y}
               tickFormatter={pct}
-              label={{ value: "Credited return", angle: -90, dx: -6, fill: "#0f172a", fontWeight: 600 }}
+              label={{ value: "Credited return", angle: -90, dx: -48, fill: "#0f172a", fontWeight: 600 }}
               tick={{ fill: "#334155", fontSize: 12 }}
             />
 
@@ -110,19 +107,18 @@ export function PayoffChart({
 
             <Area type="monotone" dataKey="credited" stroke="none" fill="url(#premiumFill)" fillOpacity={0.9} isAnimationActive={false} />
             <Line type="monotone" dataKey="credited" stroke="#0f172a" strokeWidth={4} dot={false} isAnimationActive={false} />
+            <ReferenceDot x={marketReturn} y={creditedReturn} r={7} fill="#0f172a" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" isFront />
 
             <defs>
               <linearGradient id="premiumFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.22} />
                 <stop offset="100%" stopColor="#0f172a" stopOpacity={0.05} />
               </linearGradient>
             </defs>
           </ComposedChart>
         </ResponsiveContainer>
 
-        <div className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-900 shadow-2xl" style={{ left: `${clamp(xPct, 3, 97)}%`, top: `${clamp(yPct, 7, 93)}%` }} />
-
-        <div data-testid="active-scenario-card" className="pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl" style={{ left: `${clamp(xPct + 2, 6, 75)}%`, top: `${clamp(yPct - 4, 8, 80)}%` }}>
+        <div data-testid="active-scenario-card" className={`pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl ${bubblePositionClass}`}>
           <p className="font-semibold">Active scenario</p>
           <p className="mt-1">Market move: {pct(marketReturn)}</p>
           <p>Credited result: {pct(creditedReturn)}</p>
@@ -130,11 +126,16 @@ export function PayoffChart({
         </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-4">
+      <div className="grid gap-2 md:grid-cols-5">
         {regions.map((region) => (
           <div key={`pill-${region.label}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{region.label}</div>
         ))}
       </div>
+
+      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What this means</p>
+        <p className="mt-2">{scenarioExplanation}</p>
+      </section>
     </div>
   );
 }
@@ -147,8 +148,6 @@ type Region = {
   y2?: number;
   fill: string;
   opacity: number;
-  labelColor: string;
-  labelPosition: "insideTopLeft" | "insideTopRight" | "insideBottomLeft" | "insideBottomRight";
 };
 
 type Marker = {
@@ -167,46 +166,46 @@ function getStrategyRegions(strategyId: string, inputs: StrategyInputs, domain: 
 
   if (strategyId === "guard") {
     return [
-      { label: "Floor Limit", x1: domain.x[0], x2: domain.x[1], y1: domain.y[0], y2: floor, fill: "#fecaca", opacity: 0.45, labelColor: "#7f1d1d", labelPosition: "insideBottomLeft" },
-      { label: "Growth Participation Zone", x1: 0, x2: cap, fill: "#bfdbfe", opacity: 0.35, labelColor: "#1e3a8a", labelPosition: "insideTopRight" },
-      { label: "Capped Upside", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.45, labelColor: "#1d4ed8", labelPosition: "insideTopRight" },
-      { label: "Exposed Loss Zone", x1: domain.x[0], x2: 0, y1: floor, y2: 0, fill: "#fee2e2", opacity: 0.3, labelColor: "#b91c1c", labelPosition: "insideBottomLeft" }
+      { label: "Floor", x1: domain.x[0], x2: domain.x[1], y1: domain.y[0], y2: floor, fill: "#fecaca", opacity: 0.38 },
+      { label: "Growth", x1: 0, x2: cap, fill: "#bfdbfe", opacity: 0.28 },
+      { label: "Cap", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.38 },
+      { label: "Loss zone", x1: domain.x[0], x2: 0, y1: floor, y2: 0, fill: "#fee2e2", opacity: 0.25 }
     ];
   }
 
   if (["precision", "dualPrecision", "protectionTrigger"].includes(strategyId)) {
     return [
-      { label: "Losses Beyond Buffer", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.48, labelColor: "#991b1b", labelPosition: "insideBottomLeft" },
-      { label: strategyId === "dualPrecision" ? "Trigger Credit Zone (incl. mild down)" : "Trigger Credit Zone", x1: strategyId === "dualPrecision" ? -buffer : 0, x2: domain.x[1], y1: 0, y2: inputs.triggerRate ?? 0.06, fill: "#bbf7d0", opacity: 0.4, labelColor: "#166534", labelPosition: "insideTopRight" },
-      { label: "Buffer Protected Zone", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.32, labelColor: "#065f46", labelPosition: "insideBottomRight" },
-      { label: "Growth Participation Zone", x1: 0, x2: domain.x[1], y1: 0, y2: domain.y[1], fill: "#dbeafe", opacity: 0.2, labelColor: "#1d4ed8", labelPosition: "insideTopLeft" }
+      { label: "Loss zone", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.4 },
+      { label: "Trigger", x1: strategyId === "dualPrecision" ? -buffer : 0, x2: domain.x[1], y1: 0, y2: inputs.triggerRate ?? 0.06, fill: "#bbf7d0", opacity: 0.3 },
+      { label: "Buffer", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.25 },
+      { label: "Growth", x1: 0, x2: domain.x[1], y1: 0, y2: domain.y[1], fill: "#dbeafe", opacity: 0.16 }
     ];
   }
 
   if (["protectionCap"].includes(strategyId)) {
     return [
-      { label: "Principal Protected Zone", x1: domain.x[0], x2: 0, y1: 0, y2: 0.05, fill: "#a7f3d0", opacity: 0.45, labelColor: "#166534", labelPosition: "insideTopLeft" },
-      { label: "Growth Participation Zone", x1: 0, x2: inputs.cap ?? 0.08, y1: 0, y2: inputs.cap ?? 0.08, fill: "#bfdbfe", opacity: 0.3, labelColor: "#1e3a8a", labelPosition: "insideTopRight" },
-      { label: "Capped Upside", y1: inputs.cap ?? 0.08, y2: domain.y[1], fill: "#dbeafe", opacity: 0.48, labelColor: "#1d4ed8", labelPosition: "insideTopRight" }
+      { label: "Principal", x1: domain.x[0], x2: 0, y1: 0, y2: 0.05, fill: "#a7f3d0", opacity: 0.35 },
+      { label: "Growth", x1: 0, x2: inputs.cap ?? 0.08, y1: 0, y2: inputs.cap ?? 0.08, fill: "#bfdbfe", opacity: 0.24 },
+      { label: "Cap", y1: inputs.cap ?? 0.08, y2: domain.y[1], fill: "#dbeafe", opacity: 0.36 }
     ];
   }
 
   return [
-    { label: "Losses Beyond Buffer", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.5, labelColor: "#991b1b", labelPosition: "insideBottomLeft" },
-    { label: "Buffer Protected Zone", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.35, labelColor: "#065f46", labelPosition: "insideBottomRight" },
-    { label: "Growth Participation Zone", x1: 0, x2: domain.x[1], y1: 0, y2: inputs.cap ?? domain.y[1], fill: "#bfdbfe", opacity: 0.25, labelColor: "#1e3a8a", labelPosition: "insideTopLeft" },
-    { label: "Capped Upside", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.5, labelColor: "#1d4ed8", labelPosition: "insideTopRight" }
+    { label: "Loss zone", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.4 },
+    { label: "Buffer", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.25 },
+    { label: "Growth", x1: 0, x2: domain.x[1], y1: 0, y2: inputs.cap ?? domain.y[1], fill: "#bfdbfe", opacity: 0.18 },
+    { label: "Cap", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.36 }
   ];
 }
 
 function getThresholdMarkers(strategyId: string, inputs: StrategyInputs): Marker[] {
   const markers: Marker[] = [
-    { axis: "x", value: 0, label: "Zero Market", color: "#334155", dashed: true, position: "insideTopLeft" },
-    { axis: "y", value: 0, label: "Zero Credit", color: "#334155", dashed: true, position: "right" }
+    { axis: "x", value: 0, label: "0% market", color: "#334155", dashed: true, position: "insideTopLeft" },
+    { axis: "y", value: 0, label: "Zero credit", color: "#334155", dashed: true, position: "right" }
   ];
 
   if (inputs.buffer) {
-    markers.push({ axis: "x", value: -inputs.buffer, label: "Buffer Edge", color: "#0f766e", position: "insideTopLeft" });
+    markers.push({ axis: "x", value: -inputs.buffer, label: "Buffer", color: "#0f766e", position: "insideTopLeft" });
   }
   if (inputs.cap) {
     markers.push({ axis: "y", value: inputs.cap, label: "Cap", color: "#1d4ed8", position: "right" });
@@ -215,12 +214,8 @@ function getThresholdMarkers(strategyId: string, inputs: StrategyInputs): Marker
     markers.push({ axis: "y", value: inputs.floor, label: "Floor", color: "#b91c1c", position: "left" });
   }
   if (inputs.triggerRate && ["precision", "dualPrecision", "protectionTrigger"].includes(strategyId)) {
-    markers.push({ axis: "y", value: inputs.triggerRate, label: "Trigger Credit", color: "#166534", position: "left" });
+    markers.push({ axis: "y", value: inputs.triggerRate, label: "Trigger", color: "#166534", position: "left" });
   }
 
   return markers;
-}
-
-function clamp(v: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, v));
 }

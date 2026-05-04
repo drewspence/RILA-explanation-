@@ -15,10 +15,12 @@ const defaults = {
 export function CompareStrategies({
   startingPremium,
   marketReturn,
+  setMarketReturn,
   roundToDollar
 }: {
   startingPremium: number;
   marketReturn: number;
+  setMarketReturn: (value: number) => void;
   roundToDollar: boolean;
 }) {
   const [aStrategy, setAStrategy] = useState<StrategyId>(defaults.a.strategyId);
@@ -43,30 +45,31 @@ export function CompareStrategies({
   );
 
   return (
-    <section className="space-y-5">
-      <header className="rounded-[24px] border border-slate-200 bg-white px-6 py-5 shadow-lg">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Compare Lab</p>
+    <section className="space-y-6">
+      <header className="rounded-[24px] border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Compare Strategies</p>
         <h2 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">Side-by-side strategy behavior</h2>
-        <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
-          <Assumption label="Synchronized market assumption" value={pct(marketReturn)} />
+        <div className="mt-4 grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1fr_1fr_1.4fr]">
+          <Assumption label="Market assumption" value={pct(marketReturn)} />
           <Assumption label="Starting premium" value={currency(startingPremium, roundToDollar)} />
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Synchronized market slider
+            <input type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-3 w-full accent-slate-700" />
+            <div className="mt-1 flex justify-between text-[11px] font-normal text-slate-500"><span>-40%</span><span>0%</span><span>+40%</span></div>
+          </label>
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <StrategyPanel title="Strategy A" strategy={aStrategy} setStrategy={setAStrategy} inputs={aInputs} setInputs={setAInputs} result={comparison.a} roundToDollar={roundToDollar} marketReturn={marketReturn} />
         <StrategyPanel title="Strategy B" strategy={bStrategy} setStrategy={setBStrategy} inputs={bInputs} setInputs={setBInputs} result={comparison.b} roundToDollar={roundToDollar} marketReturn={marketReturn} />
       </div>
 
-      <div className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-lg">
+      <div className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid gap-3 md:grid-cols-3">
           <Delta label="Credited return delta (B-A)" value={pct(comparison.creditedDifference)} />
           <Delta label="Ending value delta (B-A)" value={currency(comparison.endingValueDifference, roundToDollar)} />
           <Delta label="Downside behavior" value={strategyById[bStrategy].protectionType === strategyById[aStrategy].protectionType ? "Similar profile" : `${strategyById[bStrategy].protectionType} vs ${strategyById[aStrategy].protectionType}`} />
-        </div>
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Best for this scenario</p>
-          <p className="mt-1 text-sm text-emerald-900">{comparison.summary}</p>
         </div>
       </div>
     </section>
@@ -95,9 +98,10 @@ function StrategyPanel({
   const keys = visibleInputKeys(strategy);
   const config = strategyById[strategy];
   const data = buildPayoffData(config, inputs);
+  const activeCredited = config.calculate(marketReturn, inputs);
 
   return (
-    <article className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-lg">
+    <article className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</p>
       <select className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm" value={strategy} onChange={(e) => { const id = e.target.value as StrategyId; setStrategy(id); setInputs({ ...strategyById[id].defaults }); }}>
         {strategyConfigs.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
@@ -111,7 +115,7 @@ function StrategyPanel({
         {keys.includes("participationRate") && <Term label="Participation" value={(inputs.participationRate ?? 0) * 100} onChange={(v) => setInputs({ ...inputs, participationRate: uiPercentToDecimal(v) })} min={0} max={200} />}
       </div>
 
-      <MiniPayoff data={data} marketReturn={marketReturn} />
+      <MiniPayoff data={data} marketReturn={marketReturn} activeCredited={activeCredited} />
 
       <div className="mt-3 grid gap-2 text-sm">
         <Stat label="Credited return" value={pct(result.creditedReturn)} />
@@ -123,25 +127,27 @@ function StrategyPanel({
   );
 }
 
-function MiniPayoff({ data, marketReturn }: { data: Array<{ market: number; credited: number }>; marketReturn: number }) {
-  const points = data.filter((p) => p.market % 0.05 === 0 || Math.abs(p.market - marketReturn) < 0.005);
+function MiniPayoff({ data, marketReturn, activeCredited }: { data: Array<{ market: number; credited: number }>; marketReturn: number; activeCredited: number }) {
   const width = 320;
-  const height = 120;
-  const x = (value: number) => ((value + 0.5) / 1.0) * width;
-  const y = (value: number) => height - ((value + 0.5) / 1.0) * height;
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.market)},${y(p.credited)}`).join(" ");
-  const active = data.reduce((closest, p) => Math.abs(p.market - marketReturn) < Math.abs(closest.market - marketReturn) ? p : closest, data[0]);
+  const height = 132;
+  const xMin = -0.5;
+  const xMax = 0.5;
+  const yMin = -0.5;
+  const yMax = 0.5;
+  const x = (value: number) => ((value - xMin) / (xMax - xMin)) * width;
+  const y = (value: number) => height - ((value - yMin) / (yMax - yMin)) * height;
+  const path = data.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.market)},${y(p.credited)}`).join(" ");
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-950/95 p-3">
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
       <svg viewBox={`0 0 ${width} ${height}`} className="h-28 w-full">
-        <rect x={0} y={0} width={width} height={height} fill="#020617" />
-        <line x1={0} y1={y(0)} x2={width} y2={y(0)} stroke="#334155" strokeDasharray="4 4" />
-        <line x1={x(0)} y1={0} x2={x(0)} y2={height} stroke="#334155" strokeDasharray="4 4" />
-        <path d={path} stroke="#60a5fa" strokeWidth={3} fill="none" />
-        <circle cx={x(active.market)} cy={y(active.credited)} r={4} fill="#f8fafc" stroke="#60a5fa" strokeWidth={2} />
+        <rect x={0} y={0} width={width} height={height} fill="#f8fafc" />
+        <line x1={0} y1={y(0)} x2={width} y2={y(0)} stroke="#94a3b8" strokeDasharray="4 4" />
+        <line x1={x(0)} y1={0} x2={x(0)} y2={height} stroke="#94a3b8" strokeDasharray="4 4" />
+        <path d={path} stroke="#0f172a" strokeWidth={2.5} fill="none" />
+        <circle cx={x(marketReturn)} cy={y(activeCredited)} r={4.5} fill="#0f172a" stroke="#fff" strokeWidth={2} />
       </svg>
-      <p className="mt-2 text-xs text-slate-300">Mini payoff diagram at {pct(marketReturn)} market assumption.</p>
+      <p className="mt-2 text-xs text-slate-600">Active scenario: {pct(marketReturn)} market / {pct(activeCredited)} credited.</p>
     </div>
   );
 }

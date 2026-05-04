@@ -4,29 +4,22 @@ import { expectNoHorizontalOverflow, expectVisibleWithinViewport } from "../help
 
 async function gotoScenario(page: Page) {
   await page.goto("/");
-  await tab(page, "scenario").click();
 }
 
 test.describe("visual regression coverage", () => {
-  test("overview default state", async ({ page }) => {
-    await page.goto("/");
-    await expectVisibleWithinViewport(page.getByRole("heading", { level: 1, name: /structured outcome studio/i }), "overview heading");
-    await expectNoHorizontalOverflow(page);
-    await test.info().attach("overview-default", {
-      body: await page.screenshot({ fullPage: true }),
-      contentType: "image/png"
-    });
-  });
-
-  test("scenario builder default and stressed state", async ({ page }) => {
+  test("scenario default state", async ({ page }) => {
     await gotoScenario(page);
+    await expectVisibleWithinViewport(page.getByRole("heading", { level: 1, name: /structured outcome studio/i }), "app heading");
     await expectVisibleWithinViewport(page.getByTestId("payoff-chart"), "scenario payoff chart");
     await expectNoHorizontalOverflow(page);
     await test.info().attach("scenario-default", {
       body: await page.screenshot({ fullPage: true }),
       contentType: "image/png"
     });
+  });
 
+  test("scenario stressed state", async ({ page }) => {
+    await gotoScenario(page);
     await page.getByRole("button", { name: /severe down/i }).click();
     await test.info().attach("scenario-severe-down", {
       body: await page.screenshot({ fullPage: true }),
