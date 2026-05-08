@@ -89,7 +89,7 @@ jobs:
         if: ${{ steps.test_results_check.outputs.has_results == 'true' }}
         run: |
           cat <<EOF >> "$GITHUB_STEP_SUMMARY"
-          - Additional artifact uploaded: playwright-test-results (failure screenshots, traces, videos, and test attachments when present).
+          - Additional artifact uploaded: playwright-test-results (functional test output when present).
           EOF
 
       - name: Publish QA summary (no test-results artifact)

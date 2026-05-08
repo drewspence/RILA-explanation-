@@ -1,6 +1,6 @@
 # Allianz-style 1-year RILA Strategy Illustration Tool
 
-Educational, client-facing advisor presentation app built with Next.js App Router + TypeScript.
+Educational, client-facing advisor explanation app built with Next.js App Router + TypeScript.
 
 ## Run locally
 
@@ -17,7 +17,6 @@ This project includes a Playwright QA suite that validates:
 - Core functionality across main flows (loading, interaction, strategy/scenario updates, chart updates).
 - Console/runtime health (no major console errors during basic journeys).
 - Responsive behavior (desktop/tablet/mobile Chromium projects).
-- Visual regression snapshots for key states.
 
 ### Local QA commands
 
@@ -30,9 +29,6 @@ npm run qa:e2e:headed
 
 # Playwright UI mode
 npm run qa:e2e:ui
-
-# Visual snapshots only
-npm run qa:e2e:visual
 ```
 
 ### Run against a live URL
@@ -47,14 +43,6 @@ Notes:
 - `PLAYWRIGHT_BASE_URL` disables local web server boot in Playwright config.
 - CI defaults to localhost (`http://127.0.0.1:3000`) for reproducibility.
 
-### Visual artifacts strategy (no committed binary baselines)
-
-To keep this repository/Codex PR flow free of committed binary files, the visual suite captures full-page screenshots as Playwright test attachments and uploads them via CI artifacts instead of relying on checked-in snapshot PNG baselines.
-
-If you want strict pixel-diff visual regression in your own environment:
-1. Run `npm run qa:e2e:visual -- --update-snapshots` locally.
-2. Commit generated baseline files outside Codex if your workflow permits binary artifacts.
-
 ## GitHub Actions QA workflow
 
 PR workflow: `.github/workflows/playwright-qa.yml`
@@ -65,13 +53,13 @@ On every pull request, GitHub Actions will:
 3. Build the app (`npm run build`)
 4. Start app server on localhost in CI (`npm run start -- --hostname 127.0.0.1 --port 3000`)
 5. Run Playwright suite (`npm run qa:e2e`)
-6. Upload artifacts for debugging and visual review
+6. Upload artifacts for debugging
 
 ### Artifacts available in PR checks
 
 From the Actions run artifacts:
 - `playwright-report` (HTML report)
-- `playwright-test-results` (failure screenshots, traces, videos, and snapshot outputs)
+- `playwright-test-results` (functional test output, when produced)
 
 A run summary is also written to `GITHUB_STEP_SUMMARY` with instructions on where to find failures.
 
@@ -87,7 +75,6 @@ npm run test
 - `components/strategy` – hero outcome, explainer visuals, education cards, advisor details drawer.
 - `components/charts` – Recharts payoff visualization.
 - `components/compare` – strategy compare cards/table mode.
-- `components/print` – print/presentation panel.
 - `lib/calculations` – isolated strategy formulas and outcome engine.
 - `lib/strategyConfigs` – reusable strategy configuration objects (labels, defaults, formulas, explainers).
 - `lib/scenarioPresets` – one-click market scenario buttons.
