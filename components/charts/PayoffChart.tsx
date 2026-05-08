@@ -1,23 +1,8 @@
 "use client";
 
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Label,
-  Line,
-  ReferenceArea,
-  ReferenceDot,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
 import { pct, currency } from "@/lib/formatters";
+import { buildClientFriendlyScenarios } from "@/lib/calculations/payoffVisualization";
 import { StrategyConfig, StrategyInputs } from "@/types/strategy";
-import { buildChartDomain } from "@/lib/calculations/payoffVisualization";
-import { computeEndingValue } from "@/lib/calculations/strategies";
 
 interface Props {
   strategy: StrategyConfig;
@@ -33,189 +18,198 @@ interface Props {
 export function PayoffChart({
   strategy,
   inputs,
-  data,
   marketReturn,
   creditedReturn,
   startingPremium,
   endingValue,
   scenarioExplanation
 }: Props) {
-  const thresholds = [marketReturn, creditedReturn, -(inputs.buffer ?? 0), inputs.cap ?? 0, inputs.floor ?? 0, 0];
-  const domain = buildChartDomain(data, thresholds);
-
-  const regions = getStrategyRegions(strategy.id, inputs, domain);
-  const markers = getThresholdMarkers(strategy.id, inputs);
-  const markerCount = markers.length;
-  const bubblePositionClass = marketReturn >= 0.2 ? "right-6 top-6" : "left-6 top-6";
+  const scenarios = buildClientFriendlyScenarios(strategy, inputs);
+  const activeScenario = {
+    title: "Selected scenario",
+    market: marketReturn,
+    credited: creditedReturn,
+    note: scenarioExplanation
+  };
 
   return (
-    <div className="space-y-4">
-      <header className="mb-1 flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-5">
+      <header className="mb-1 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Payoff chart</p>
-          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">Structured Outcome Diagram</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Strategy visual</p>
+          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">What the market did vs. what gets credited</h3>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            Blue shows the index return. Green shows the performance credit after the contract rule is applied.
+          </p>
         </div>
+        <Legend />
       </header>
 
-      <div data-testid="payoff-chart" className="relative h-[640px] w-full overflow-hidden rounded-[24px] border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-4">
-        <ResponsiveContainer>
-          <ComposedChart data={data} margin={{ top: 44, right: 92, bottom: 56, left: 74 }}>
-            <CartesianGrid strokeDasharray="3 7" stroke="#cbd5e1" />
-
-            {regions.map((zone) => (
-              <ReferenceArea key={zone.label} x1={zone.x1} x2={zone.x2} y1={zone.y1} y2={zone.y2} fill={zone.fill} fillOpacity={zone.opacity} />
-            ))}
-
-            {markers.map((line, index) => (
-              <ReferenceLine key={line.label} {...(line.axis === "x" ? { x: line.value } : { y: line.value })} stroke={line.color} strokeWidth={2} strokeDasharray={line.dashed ? "6 4" : undefined}>
-                <Label value={line.label} fill={line.color} fontWeight={700} fontSize={11} position={line.position} dy={line.axis === "y" ? -12 + index * (markerCount > 3 ? 10 : 12) : undefined} />
-              </ReferenceLine>
-            ))}
-
-            <XAxis
-              type="number"
-              dataKey="market"
-              domain={domain.x}
-              tickFormatter={pct}
-              label={{ value: "Market return", dy: 26, fill: "#0f172a", fontWeight: 600 }}
-              tick={{ fill: "#334155", fontSize: 12 }}
-            />
-            <YAxis
-              type="number"
-              dataKey="credited"
-              domain={domain.y}
-              tickFormatter={pct}
-              label={{ value: "Credited return", angle: -90, dx: -48, fill: "#0f172a", fontWeight: 600 }}
-              tick={{ fill: "#334155", fontSize: 12 }}
-            />
-
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                const market = Number(label ?? 0);
-                const credited = Number(payload[0]?.value ?? 0);
-                const projectedEndingValue = computeEndingValue(startingPremium, credited);
-                return (
-                  <div className="rounded-xl border border-slate-300 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur">
-                    <p><strong>Market move:</strong> {pct(market)}</p>
-                    <p><strong>Credited result:</strong> {pct(credited)}</p>
-                    <p><strong>Ending value:</strong> {currency(projectedEndingValue)}</p>
-                  </div>
-                );
-              }}
-            />
-
-            <Area type="monotone" dataKey="credited" stroke="none" fill="url(#premiumFill)" fillOpacity={0.9} isAnimationActive={false} />
-            <Line type="monotone" dataKey="credited" stroke="#0f172a" strokeWidth={4} dot={false} isAnimationActive={false} />
-            <ReferenceDot x={marketReturn} y={creditedReturn} r={7} fill="#0f172a" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" isFront />
-
-            <defs>
-              <linearGradient id="premiumFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.22} />
-                <stop offset="100%" stopColor="#0f172a" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-          </ComposedChart>
-        </ResponsiveContainer>
-
-        <div data-testid="active-scenario-card" className={`pointer-events-none absolute max-w-[260px] rounded-xl border border-slate-900 bg-slate-950 px-3 py-2 text-xs text-white shadow-2xl ${bubblePositionClass}`}>
-          <p className="font-semibold">Active scenario</p>
-          <p className="mt-1">Market move: {pct(marketReturn)}</p>
-          <p>Credited result: {pct(creditedReturn)}</p>
-          <p>Ending value: {currency(endingValue)}</p>
+      <div data-testid="payoff-chart" className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {scenarios.map((scenario) => (
+            <MiniScenarioCard key={scenario.title} scenario={scenario} />
+          ))}
         </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-5">
-        {regions.map((region) => (
-          <div key={`pill-${region.label}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{region.label}</div>
-        ))}
+      <div data-testid="active-scenario-card" className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Selected scenario</p>
+            <p className="mt-1 font-medium text-slate-950">This row updates from the market slider and calculation engine.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-right text-xs sm:min-w-[360px]">
+            <Metric label="Index return" value={pct(activeScenario.market)} valueClassName="text-blue-800" />
+            <Metric label="Performance credit" value={pct(activeScenario.credited)} valueClassName="text-emerald-700" />
+            <Metric label="Ending value" value={currency(endingValue)} valueClassName="text-slate-950" />
+          </div>
+        </div>
+        <p className="mt-3 max-w-3xl text-slate-600">{activeScenario.note}</p>
+        <p className="mt-2 text-xs text-slate-500">Starting premium: {currency(startingPremium)}</p>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What this means</p>
-        <p className="mt-2">{scenarioExplanation}</p>
+        <p className="mt-2 max-w-3xl">{buildPlainEnglishSummary(strategy, inputs)}</p>
       </section>
     </div>
   );
 }
 
-type Region = {
-  label: string;
-  x1?: number;
-  x2?: number;
-  y1?: number;
-  y2?: number;
-  fill: string;
-  opacity: number;
-};
+type Scenario = ReturnType<typeof buildClientFriendlyScenarios>[number];
 
-type Marker = {
-  axis: "x" | "y";
-  value: number;
-  label: string;
-  color: string;
-  dashed?: boolean;
-  position: "insideTopLeft" | "insideTopRight" | "left" | "right";
-};
+function MiniScenarioCard({ scenario }: { scenario: Scenario }) {
+  const referenceValue = scenario.referenceLine?.value ?? 0;
+  const maxMagnitude = Math.max(0.2, Math.abs(scenario.market), Math.abs(scenario.credited), Math.abs(referenceValue));
+  const chartHeight = 168;
+  const halfHeight = chartHeight / 2;
 
-function getStrategyRegions(strategyId: string, inputs: StrategyInputs, domain: { x: [number, number]; y: [number, number] }): Region[] {
-  const buffer = inputs.buffer ?? 0;
-  const cap = inputs.cap ?? domain.y[1];
-  const floor = inputs.floor ?? domain.y[0];
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4" data-testid="mini-payoff-card">
+      <div className="min-h-[74px]">
+        <p className="text-sm font-semibold text-slate-950">{scenario.title}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-600">{scenario.note}</p>
+      </div>
 
-  if (strategyId === "guard") {
-    return [
-      { label: "Floor", x1: domain.x[0], x2: domain.x[1], y1: domain.y[0], y2: floor, fill: "#fecaca", opacity: 0.38 },
-      { label: "Growth", x1: 0, x2: cap, fill: "#bfdbfe", opacity: 0.28 },
-      { label: "Cap", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.38 },
-      { label: "Loss zone", x1: domain.x[0], x2: 0, y1: floor, y2: 0, fill: "#fee2e2", opacity: 0.25 }
-    ];
-  }
+      <div className="relative mt-3 h-[168px] rounded-2xl border border-slate-200 bg-white px-5 py-3">
+        <div className="absolute left-4 right-4 top-1/2 border-t border-slate-400" aria-hidden="true" />
+        <span className="absolute left-2 top-[calc(50%-9px)] bg-white pr-1 text-[10px] font-medium text-slate-500">0%</span>
 
-  if (["precision", "dualPrecision", "protectionTrigger"].includes(strategyId)) {
-    return [
-      { label: "Loss zone", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.4 },
-      { label: "Trigger", x1: strategyId === "dualPrecision" ? -buffer : 0, x2: domain.x[1], y1: 0, y2: inputs.triggerRate ?? 0.06, fill: "#bbf7d0", opacity: 0.3 },
-      { label: "Buffer", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.25 },
-      { label: "Growth", x1: 0, x2: domain.x[1], y1: 0, y2: domain.y[1], fill: "#dbeafe", opacity: 0.16 }
-    ];
-  }
+        {scenario.referenceLine && (
+          <ReferenceRule line={scenario.referenceLine} maxMagnitude={maxMagnitude} halfHeight={halfHeight} />
+        )}
 
-  if (["protectionCap"].includes(strategyId)) {
-    return [
-      { label: "Principal", x1: domain.x[0], x2: 0, y1: 0, y2: 0.05, fill: "#a7f3d0", opacity: 0.35 },
-      { label: "Growth", x1: 0, x2: inputs.cap ?? 0.08, y1: 0, y2: inputs.cap ?? 0.08, fill: "#bfdbfe", opacity: 0.24 },
-      { label: "Cap", y1: inputs.cap ?? 0.08, y2: domain.y[1], fill: "#dbeafe", opacity: 0.36 }
-    ];
-  }
+        <div className="absolute inset-x-0 top-3 flex h-[144px] items-center justify-center gap-8">
+          <VerticalBar value={scenario.market} maxMagnitude={maxMagnitude} colorClassName="bg-blue-800" label="Index" />
+          <VerticalBar value={scenario.credited} maxMagnitude={maxMagnitude} colorClassName="bg-emerald-500" label="Credit" />
+        </div>
+      </div>
 
-  return [
-    { label: "Loss zone", x1: domain.x[0], x2: -buffer, y1: domain.y[0], y2: 0, fill: "#fecaca", opacity: 0.4 },
-    { label: "Buffer", x1: -buffer, x2: 0, y1: -0.02, y2: 0.06, fill: "#a7f3d0", opacity: 0.25 },
-    { label: "Growth", x1: 0, x2: domain.x[1], y1: 0, y2: inputs.cap ?? domain.y[1], fill: "#bfdbfe", opacity: 0.18 },
-    { label: "Cap", y1: cap, y2: domain.y[1], fill: "#dbeafe", opacity: 0.36 }
-  ];
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <ValuePill label="Index return" value={pct(scenario.market)} className="text-blue-800" />
+        <ValuePill label="Performance credit" value={pct(scenario.credited)} className="text-emerald-700" />
+      </div>
+    </article>
+  );
 }
 
-function getThresholdMarkers(strategyId: string, inputs: StrategyInputs): Marker[] {
-  const markers: Marker[] = [
-    { axis: "x", value: 0, label: "0% market", color: "#334155", dashed: true, position: "insideTopLeft" },
-    { axis: "y", value: 0, label: "Zero credit", color: "#334155", dashed: true, position: "right" }
-  ];
+function VerticalBar({
+  value,
+  maxMagnitude,
+  colorClassName,
+  label
+}: {
+  value: number;
+  maxMagnitude: number;
+  colorClassName: string;
+  label: string;
+}) {
+  const barHeight = Math.max(4, Math.round((Math.abs(value) / maxMagnitude) * 72));
+  const positioning = value >= 0 ? { bottom: "50%", height: `${barHeight}px` } : { top: "50%", height: `${barHeight}px` };
 
-  if (inputs.buffer) {
-    markers.push({ axis: "x", value: -inputs.buffer, label: "Buffer", color: "#0f766e", position: "insideTopLeft" });
-  }
-  if (inputs.cap) {
-    markers.push({ axis: "y", value: inputs.cap, label: "Cap", color: "#1d4ed8", position: "right" });
-  }
-  if (inputs.floor) {
-    markers.push({ axis: "y", value: inputs.floor, label: "Floor", color: "#b91c1c", position: "left" });
-  }
-  if (inputs.triggerRate && ["precision", "dualPrecision", "protectionTrigger"].includes(strategyId)) {
-    markers.push({ axis: "y", value: inputs.triggerRate, label: "Trigger", color: "#166534", position: "left" });
+  return (
+    <div className="relative h-full w-14">
+      <span
+        className={`absolute left-1/2 w-8 -translate-x-1/2 rounded-t-md ${value < 0 ? "rounded-b-md rounded-t-none" : ""} ${colorClassName}`}
+        style={positioning}
+        aria-label={`${label}: ${pct(value)}`}
+      />
+      <span className={`absolute left-1/2 -translate-x-1/2 text-[11px] font-semibold ${value >= 0 ? "bottom-[calc(50%+6px)]" : "top-[calc(50%+6px)]"} ${label === "Index" ? "text-blue-800" : "text-emerald-700"}`}>
+        {pct(value)}
+      </span>
+      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+function ReferenceRule({
+  line,
+  maxMagnitude,
+  halfHeight
+}: {
+  line: NonNullable<Scenario["referenceLine"]>;
+  maxMagnitude: number;
+  halfHeight: number;
+}) {
+  const offset = (line.value / maxMagnitude) * (halfHeight - 12);
+  const top = `calc(50% - ${offset}px)`;
+
+  return (
+    <div className="absolute left-4 right-4 z-10 border-t border-dashed border-slate-400" style={{ top }} aria-label={`${line.label} reference line`}>
+      <span className="absolute -right-1 -top-5 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm">
+        {line.label}
+      </span>
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="flex items-center gap-4 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm">
+      <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-blue-800" /> Index return</span>
+      <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-emerald-500" /> Performance credit</span>
+    </div>
+  );
+}
+
+function Metric({ label, value, valueClassName }: { label: string; value: string; valueClassName: string }) {
+  return (
+    <div>
+      <p className="text-slate-500">{label}</p>
+      <p className={`mt-1 text-base font-semibold ${valueClassName}`}>{value}</p>
+    </div>
+  );
+}
+
+function ValuePill({ label, value, className }: { label: string; value: string; className: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+      <p className="text-[10px] font-medium text-slate-500">{label}</p>
+      <p className={`mt-1 text-sm font-semibold ${className}`}>{value}</p>
+    </div>
+  );
+}
+
+function buildPlainEnglishSummary(strategy: StrategyConfig, inputs: StrategyInputs) {
+  const buffer = inputs.buffer ?? strategy.defaults.buffer;
+  const cap = inputs.cap ?? strategy.defaults.cap;
+  const floor = inputs.floor ?? strategy.defaults.floor;
+  const triggerRate = inputs.triggerRate ?? strategy.defaults.triggerRate;
+
+  if (strategy.protectionType.includes("Buffer") && typeof buffer === "number") {
+    const upsideRule = typeof cap === "number" ? ` If the market is positive, gains are credited up to the ${pct(cap)} cap.` : " If the market is positive, gains are credited using the selected upside rule.";
+    return `With a ${pct(buffer)} buffer, the first ${pct(buffer)} of market loss is absorbed.${upsideRule} This gives clients a clearer tradeoff: some downside protection in exchange for limited upside or a defined crediting rule.`;
   }
 
-  return markers;
+  if (strategy.id === "guard" && typeof floor === "number") {
+    return `The floor limits credited losses to ${pct(floor)}. If the market is positive, gains are credited up to the ${pct(cap ?? 0)} cap.`;
+  }
+
+  if (strategy.protectionType === "Principal Protection") {
+    const upsideRule = typeof cap === "number" ? `positive returns can be credited up to the ${pct(cap)} cap` : `positive returns can receive the ${pct(triggerRate ?? 0)} trigger credit`;
+    return `Negative index returns receive a 0% performance credit, while ${upsideRule}.`;
+  }
+
+  return strategy.description;
 }

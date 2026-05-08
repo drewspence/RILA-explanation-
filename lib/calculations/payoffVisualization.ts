@@ -106,3 +106,115 @@ export function buildChartDomain(points: PayoffPoint[], thresholds: number[]) {
     y: [Math.floor((yMin - 0.02) * 100) / 100, Math.ceil((yMax + 0.02) * 100) / 100] as [number, number]
   };
 }
+
+export interface ClientFriendlyScenario {
+  title: string;
+  market: number;
+  credited: number;
+  note: string;
+  referenceLine?: {
+    label: string;
+    value: number;
+  };
+}
+
+const clampMarketScenario = (value: number) => Math.max(PAYOFF_RANGE.min, Math.min(PAYOFF_RANGE.max, value));
+
+export function buildClientFriendlyScenarios(config: StrategyConfig, inputs: StrategyInputs): ClientFriendlyScenario[] {
+  const buffer = Math.max(0, inputs.buffer ?? config.defaults.buffer ?? 0.1);
+  const cap = inputs.cap ?? config.defaults.cap;
+  const floor = inputs.floor ?? config.defaults.floor;
+  const triggerRate = inputs.triggerRate ?? config.defaults.triggerRate;
+
+  if (config.protectionType.includes("Buffer")) {
+    const withinBufferMarket = -Math.min(buffer, 0.1);
+    const beyondBufferMarket = clampMarketScenario(-(buffer + 0.15));
+    const positiveMarket = clampMarketScenario(typeof cap === "number" ? cap + 0.06 : 0.18);
+
+    return [
+      {
+        title: "Market down within buffer",
+        market: withinBufferMarket,
+        credited: config.calculate(withinBufferMarket, inputs),
+        note: config.id === "dualPrecision" ? "Buffer applies; trigger may still credit" : "Loss absorbed by buffer",
+        referenceLine: { label: "Buffer", value: -buffer }
+      },
+      {
+        title: "Market down beyond buffer",
+        market: beyondBufferMarket,
+        credited: config.calculate(beyondBufferMarket, inputs),
+        note: "Client only participates after buffer is exceeded",
+        referenceLine: { label: "Buffer", value: -buffer }
+      },
+      {
+        title: typeof cap === "number" ? "Market positive but capped" : "Market is positive",
+        market: positiveMarket,
+        credited: config.calculate(positiveMarket, inputs),
+        note: typeof cap === "number" ? "Growth limited at cap" : "Upside rule determines credit",
+        referenceLine: typeof cap === "number" ? { label: "Cap", value: cap } : triggerRate ? { label: "Trigger", value: triggerRate } : undefined
+      }
+    ];
+  }
+
+  if (config.id === "guard") {
+    const floorValue = floor ?? -0.1;
+    const capValue = cap ?? 0.12;
+    const belowFloorMarket = clampMarketScenario(floorValue - 0.15);
+    const moderateDownMarket = Math.min(-0.05, floorValue / 2);
+    const positiveMarket = clampMarketScenario(capValue + 0.06);
+
+    return [
+      {
+        title: "Market down moderately",
+        market: moderateDownMarket,
+        credited: config.calculate(moderateDownMarket, inputs),
+        note: "Client follows market above floor",
+        referenceLine: { label: "Floor", value: floorValue }
+      },
+      {
+        title: "Market down beyond floor",
+        market: belowFloorMarket,
+        credited: config.calculate(belowFloorMarket, inputs),
+        note: "Loss limited at floor",
+        referenceLine: { label: "Floor", value: floorValue }
+      },
+      {
+        title: "Market positive but capped",
+        market: positiveMarket,
+        credited: config.calculate(positiveMarket, inputs),
+        note: "Growth limited at cap",
+        referenceLine: { label: "Cap", value: capValue }
+      }
+    ];
+  }
+
+  const capValue = cap ?? 0.07;
+  const triggerValue = triggerRate ?? 0.04;
+  const hasCap = config.requiredInputs.includes("cap");
+  const positiveMarket = hasCap ? clampMarketScenario(capValue + 0.06) : 0.12;
+  const positiveReference = hasCap ? { label: "Cap", value: capValue } : { label: "Trigger", value: triggerValue };
+
+  return [
+    {
+      title: "Market is negative",
+      market: -0.18,
+      credited: config.calculate(-0.18, inputs),
+      note: "Negative index return credits 0%",
+      referenceLine: { label: "0% floor", value: 0 }
+    },
+    {
+      title: "Market is flat",
+      market: 0,
+      credited: config.calculate(0, inputs),
+      note: hasCap ? "No market gain to credit" : "Trigger can credit when flat",
+      referenceLine: positiveReference
+    },
+    {
+      title: hasCap ? "Market positive but capped" : "Market is positive",
+      market: positiveMarket,
+      credited: config.calculate(positiveMarket, inputs),
+      note: hasCap ? "Growth limited at cap" : "Positive return receives trigger credit",
+      referenceLine: positiveReference
+    }
+  ];
+}
