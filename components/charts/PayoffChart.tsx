@@ -1,7 +1,7 @@
 "use client";
 
 import { pct, currency } from "@/lib/formatters";
-import { buildClientFriendlyScenarios } from "@/lib/calculations/payoffVisualization";
+import { buildClientFriendlyScenarios, ClientFriendlyScenario } from "@/lib/calculations/payoffVisualization";
 import { StrategyConfig, StrategyInputs } from "@/types/strategy";
 
 interface Props {
@@ -15,6 +15,8 @@ interface Props {
   scenarioExplanation: string;
 }
 
+type ReferenceLine = NonNullable<ClientFriendlyScenario["referenceLine"]>;
+
 export function PayoffChart({
   strategy,
   inputs,
@@ -24,67 +26,93 @@ export function PayoffChart({
   endingValue,
   scenarioExplanation
 }: Props) {
-  const scenarios = buildClientFriendlyScenarios(strategy, inputs);
-  const activeScenario = {
-    title: "Selected scenario",
+  const exampleScenarios = buildClientFriendlyScenarios(strategy, inputs);
+  const liveScenario: ClientFriendlyScenario = {
+    title: `If the market return is ${pct(marketReturn)}`,
     market: marketReturn,
     credited: creditedReturn,
     note: scenarioExplanation
   };
+  const referenceLines = getReferenceLines(strategy, inputs);
 
   return (
     <div className="space-y-5">
       <header className="mb-1 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Strategy visual</p>
-          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">What the market did vs. what gets credited</h3>
+          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">If the market return is X%, what gets credited?</h3>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Blue shows the index return. Green shows the performance credit after the contract rule is applied.
+            Move the market slider to update the blue index return bar and green performance credit bar in real time.
           </p>
         </div>
         <Legend />
       </header>
 
-      <div data-testid="payoff-chart" className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {scenarios.map((scenario) => (
-            <MiniScenarioCard key={scenario.title} scenario={scenario} />
-          ))}
-        </div>
-      </div>
-
-      <div data-testid="active-scenario-card" className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-slate-700">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Selected scenario</p>
-            <p className="mt-1 font-medium text-slate-950">This row updates from the market slider and calculation engine.</p>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-right text-xs sm:min-w-[360px]">
-            <Metric label="Index return" value={pct(activeScenario.market)} valueClassName="text-blue-800" />
-            <Metric label="Performance credit" value={pct(activeScenario.credited)} valueClassName="text-emerald-700" />
-            <Metric label="Ending value" value={currency(endingValue)} valueClassName="text-slate-950" />
-          </div>
-        </div>
-        <p className="mt-3 max-w-3xl text-slate-600">{activeScenario.note}</p>
-        <p className="mt-2 text-xs text-slate-500">Starting premium: {currency(startingPremium)}</p>
-      </div>
+      <section data-testid="payoff-chart" className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <LiveScenarioCard
+          scenario={liveScenario}
+          referenceLines={referenceLines}
+          endingValue={endingValue}
+          startingPremium={startingPremium}
+        />
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What this means</p>
         <p className="mt-2 max-w-3xl">{buildPlainEnglishSummary(strategy, inputs)}</p>
       </section>
+
+      <section className="space-y-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Example scenarios</p>
+          <p className="mt-1 text-sm text-slate-600">Reference examples for how the current contract rules work in different markets.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {exampleScenarios.map((scenario) => (
+            <ExampleScenarioCard key={scenario.title} scenario={scenario} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
 
-type Scenario = ReturnType<typeof buildClientFriendlyScenarios>[number];
+function LiveScenarioCard({
+  scenario,
+  referenceLines,
+  endingValue,
+  startingPremium
+}: {
+  scenario: ClientFriendlyScenario;
+  referenceLines: ReferenceLine[];
+  endingValue: number;
+  startingPremium: number;
+}) {
+  return (
+    <article data-testid="active-scenario-card" className="rounded-3xl border border-blue-100 bg-blue-50/60 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Live scenario</p>
+          <h4 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">{scenario.title}</h4>
+          <p data-testid="live-scenario-explanation" className="mt-2 max-w-2xl text-sm text-slate-700">{scenario.note}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-right text-xs sm:min-w-[380px]">
+          <Metric label="Index return" value={pct(scenario.market)} valueClassName="text-blue-800" testId="live-index-return-value" />
+          <Metric label="Performance credit" value={pct(scenario.credited)} valueClassName="text-emerald-700" testId="live-performance-credit-value" />
+          <Metric label="Ending value" value={currency(endingValue)} valueClassName="text-slate-950" />
+        </div>
+      </div>
 
-function MiniScenarioCard({ scenario }: { scenario: Scenario }) {
-  const referenceValue = scenario.referenceLine?.value ?? 0;
-  const maxMagnitude = Math.max(0.2, Math.abs(scenario.market), Math.abs(scenario.credited), Math.abs(referenceValue));
-  const chartHeight = 168;
-  const halfHeight = chartHeight / 2;
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+        <BarComparisonChart scenario={scenario} referenceLines={referenceLines} size="large" />
+      </div>
 
+      <p className="mt-3 text-xs text-slate-500">Starting premium: {currency(startingPremium)}</p>
+    </article>
+  );
+}
+
+function ExampleScenarioCard({ scenario }: { scenario: ClientFriendlyScenario }) {
   return (
     <article className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4" data-testid="mini-payoff-card">
       <div className="min-h-[74px]">
@@ -92,19 +120,7 @@ function MiniScenarioCard({ scenario }: { scenario: Scenario }) {
         <p className="mt-1 text-xs leading-5 text-slate-600">{scenario.note}</p>
       </div>
 
-      <div className="relative mt-3 h-[168px] rounded-2xl border border-slate-200 bg-white px-5 py-3">
-        <div className="absolute left-4 right-4 top-1/2 border-t border-slate-400" aria-hidden="true" />
-        <span className="absolute left-2 top-[calc(50%-9px)] bg-white pr-1 text-[10px] font-medium text-slate-500">0%</span>
-
-        {scenario.referenceLine && (
-          <ReferenceRule line={scenario.referenceLine} maxMagnitude={maxMagnitude} halfHeight={halfHeight} />
-        )}
-
-        <div className="absolute inset-x-0 top-3 flex h-[144px] items-center justify-center gap-8">
-          <VerticalBar value={scenario.market} maxMagnitude={maxMagnitude} colorClassName="bg-blue-800" label="Index" />
-          <VerticalBar value={scenario.credited} maxMagnitude={maxMagnitude} colorClassName="bg-emerald-500" label="Credit" />
-        </div>
-      </div>
+      <BarComparisonChart scenario={scenario} referenceLines={scenario.referenceLine ? [scenario.referenceLine] : []} size="compact" />
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <ValuePill label="Index return" value={pct(scenario.market)} className="text-blue-800" />
@@ -114,28 +130,96 @@ function MiniScenarioCard({ scenario }: { scenario: Scenario }) {
   );
 }
 
+function BarComparisonChart({
+  scenario,
+  referenceLines,
+  size
+}: {
+  scenario: ClientFriendlyScenario;
+  referenceLines: ReferenceLine[];
+  size: "large" | "compact";
+}) {
+  const maxMagnitude = Math.max(
+    0.4,
+    Math.abs(scenario.market),
+    Math.abs(scenario.credited),
+    ...referenceLines.map((line) => Math.abs(line.value))
+  );
+  const chartHeight = size === "large" ? 260 : 168;
+  const barMaxHeight = size === "large" ? 112 : 72;
+  const barGap = size === "large" ? "gap-16" : "gap-8";
+
+  return (
+    <div className={`relative mt-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 ${size === "large" ? "h-[260px]" : "h-[168px]"}`}>
+      <div className="absolute left-4 right-4 top-1/2 border-t border-slate-400" aria-hidden="true" />
+      <span className="absolute left-2 top-[calc(50%-9px)] bg-white pr-1 text-[10px] font-medium text-slate-500">0%</span>
+
+      {referenceLines.map((line, index) => (
+        <ReferenceRule
+          key={`${line.label}-${line.value}`}
+          line={line}
+          maxMagnitude={maxMagnitude}
+          chartHeight={chartHeight}
+          labelOffset={index * 18}
+        />
+      ))}
+
+      <div className={`absolute inset-x-0 top-3 flex items-center justify-center ${barGap}`} style={{ height: chartHeight - 24 }}>
+        <VerticalBar
+          value={scenario.market}
+          maxMagnitude={maxMagnitude}
+          maxHeight={barMaxHeight}
+          colorClassName="bg-blue-800"
+          label="Index"
+          valueTestId={size === "large" ? "live-index-bar-label" : undefined}
+          barTestId={size === "large" ? "live-index-bar" : undefined}
+        />
+        <VerticalBar
+          value={scenario.credited}
+          maxMagnitude={maxMagnitude}
+          maxHeight={barMaxHeight}
+          colorClassName="bg-emerald-500"
+          label="Credit"
+          valueTestId={size === "large" ? "live-credit-bar-label" : undefined}
+          barTestId={size === "large" ? "live-credit-bar" : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
 function VerticalBar({
   value,
   maxMagnitude,
+  maxHeight,
   colorClassName,
-  label
+  label,
+  valueTestId,
+  barTestId
 }: {
   value: number;
   maxMagnitude: number;
+  maxHeight: number;
   colorClassName: string;
   label: string;
+  valueTestId?: string;
+  barTestId?: string;
 }) {
-  const barHeight = Math.max(4, Math.round((Math.abs(value) / maxMagnitude) * 72));
+  const barHeight = Math.max(4, Math.round((Math.abs(value) / maxMagnitude) * maxHeight));
   const positioning = value >= 0 ? { bottom: "50%", height: `${barHeight}px` } : { top: "50%", height: `${barHeight}px` };
 
   return (
-    <div className="relative h-full w-14">
+    <div className="relative h-full w-16">
       <span
-        className={`absolute left-1/2 w-8 -translate-x-1/2 rounded-t-md ${value < 0 ? "rounded-b-md rounded-t-none" : ""} ${colorClassName}`}
+        data-testid={barTestId}
+        className={`absolute left-1/2 w-9 -translate-x-1/2 rounded-t-md ${value < 0 ? "rounded-b-md rounded-t-none" : ""} ${colorClassName}`}
         style={positioning}
         aria-label={`${label}: ${pct(value)}`}
       />
-      <span className={`absolute left-1/2 -translate-x-1/2 text-[11px] font-semibold ${value >= 0 ? "bottom-[calc(50%+6px)]" : "top-[calc(50%+6px)]"} ${label === "Index" ? "text-blue-800" : "text-emerald-700"}`}>
+      <span
+        data-testid={valueTestId}
+        className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold ${value >= 0 ? "bottom-[calc(50%+6px)]" : "top-[calc(50%+6px)]"} ${label === "Index" ? "text-blue-800" : "text-emerald-700"}`}
+      >
         {pct(value)}
       </span>
       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-500">{label}</span>
@@ -146,18 +230,20 @@ function VerticalBar({
 function ReferenceRule({
   line,
   maxMagnitude,
-  halfHeight
+  chartHeight,
+  labelOffset
 }: {
-  line: NonNullable<Scenario["referenceLine"]>;
+  line: ReferenceLine;
   maxMagnitude: number;
-  halfHeight: number;
+  chartHeight: number;
+  labelOffset: number;
 }) {
-  const offset = (line.value / maxMagnitude) * (halfHeight - 12);
+  const offset = (line.value / maxMagnitude) * (chartHeight / 2 - 12);
   const top = `calc(50% - ${offset}px)`;
 
   return (
     <div className="absolute left-4 right-4 z-10 border-t border-dashed border-slate-400" style={{ top }} aria-label={`${line.label} reference line`}>
-      <span className="absolute -right-1 -top-5 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm">
+      <span className="absolute -right-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm" style={{ top: -20 - labelOffset }}>
         {line.label}
       </span>
     </div>
@@ -173,11 +259,11 @@ function Legend() {
   );
 }
 
-function Metric({ label, value, valueClassName }: { label: string; value: string; valueClassName: string }) {
+function Metric({ label, value, valueClassName, testId }: { label: string; value: string; valueClassName: string; testId?: string }) {
   return (
     <div>
       <p className="text-slate-500">{label}</p>
-      <p className={`mt-1 text-base font-semibold ${valueClassName}`}>{value}</p>
+      <p data-testid={testId} className={`mt-1 text-base font-semibold ${valueClassName}`}>{value}</p>
     </div>
   );
 }
@@ -189,6 +275,32 @@ function ValuePill({ label, value, className }: { label: string; value: string; 
       <p className={`mt-1 text-sm font-semibold ${className}`}>{value}</p>
     </div>
   );
+}
+
+function getReferenceLines(strategy: StrategyConfig, inputs: StrategyInputs): ReferenceLine[] {
+  const lines: ReferenceLine[] = [];
+  const buffer = inputs.buffer ?? strategy.defaults.buffer;
+  const cap = inputs.cap ?? strategy.defaults.cap;
+  const floor = inputs.floor ?? strategy.defaults.floor;
+  const triggerRate = inputs.triggerRate ?? strategy.defaults.triggerRate;
+
+  if (strategy.protectionType.includes("Buffer") && typeof buffer === "number") {
+    lines.push({ label: "Buffer", value: -buffer });
+  }
+
+  if (["performanceCap", "guard", "protectionCap"].includes(strategy.id) && typeof cap === "number") {
+    lines.push({ label: "Cap", value: cap });
+  }
+
+  if (strategy.id === "guard" && typeof floor === "number") {
+    lines.push({ label: "Floor", value: floor });
+  }
+
+  if (["precision", "dualPrecision", "protectionTrigger"].includes(strategy.id) && typeof triggerRate === "number") {
+    lines.push({ label: "Trigger", value: triggerRate });
+  }
+
+  return lines;
 }
 
 function buildPlainEnglishSummary(strategy: StrategyConfig, inputs: StrategyInputs) {

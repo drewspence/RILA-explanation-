@@ -41,13 +41,56 @@ test.describe("core QA flows", () => {
 
     await page.getByTestId("market-slider").evaluate((slider) => {
       const element = slider as HTMLInputElement;
-      element.value = "0.2";
+      const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      valueSetter?.call(element, "0.2");
       element.dispatchEvent(new Event("input", { bubbles: true }));
       element.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await expect(page.getByTestId("active-scenario-card")).toContainText(/market move: 20%/i);
+    await expect(page.getByTestId("active-scenario-card")).toContainText(/if the market return is 20%/i);
+    await expect(page.getByTestId("live-index-return-value")).toHaveText("20%");
+    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("12%");
+    await expect(page.getByTestId("live-index-bar-label")).toHaveText("20%");
+    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("12%");
 
     await expect(values.endingValue).not.toHaveText(initialEndingValue ?? "");
+  });
+
+  test("live bar chart follows the market slider and strategy calculation", async ({ page }) => {
+    await page.goto("/");
+
+    const setSlider = async (value: string) => {
+      await page.getByTestId("market-slider").evaluate((slider, nextValue) => {
+        const element = slider as HTMLInputElement;
+        const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        valueSetter?.call(element, nextValue as string);
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      }, value);
+    };
+
+    await setSlider("0.2");
+    await expect(page.getByTestId("live-index-return-value")).toHaveText("20%");
+    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("12%");
+    await expect(page.getByTestId("live-index-bar-label")).toHaveText("20%");
+    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("12%");
+    const positiveIndexBarHeight = await page.getByTestId("live-index-bar").evaluate((bar) => getComputedStyle(bar).height);
+    const positiveCreditBarHeight = await page.getByTestId("live-credit-bar").evaluate((bar) => getComputedStyle(bar).height);
+
+    await setSlider("-0.1");
+    await expect(page.getByTestId("live-index-return-value")).toHaveText("-10%");
+    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("0%");
+    await expect(page.getByTestId("live-index-bar-label")).toHaveText("-10%");
+    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("0%");
+
+    await setSlider("-0.25");
+    await expect(page.getByTestId("live-index-return-value")).toHaveText("-25%");
+    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("-15%");
+    await expect(page.getByTestId("live-index-bar-label")).toHaveText("-25%");
+    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("-15%");
+    await expect(page.getByTestId("live-scenario-explanation")).toContainText(/after the 10% buffer/i);
+
+    await expect(page.getByTestId("live-index-bar")).not.toHaveCSS("height", positiveIndexBarHeight);
+    await expect(page.getByTestId("live-credit-bar")).not.toHaveCSS("height", positiveCreditBarHeight);
   });
 
   test("compare flow remains interactive and responsive", async ({ page }) => {
