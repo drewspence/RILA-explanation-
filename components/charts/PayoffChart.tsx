@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { pct, currency } from "@/lib/formatters";
 import { buildClientFriendlyScenarios, ClientFriendlyScenario } from "@/lib/calculations/payoffVisualization";
 import { StrategyConfig, StrategyInputs } from "@/types/strategy";
@@ -169,7 +170,10 @@ function BarComparisonChart({
           value={scenario.market}
           maxMagnitude={maxMagnitude}
           maxHeight={barMaxHeight}
+          chartContentHeight={chartHeight - 24}
           colorClassName="bg-blue-800"
+          valueColorClassName="text-blue-950"
+          chipBorderClassName="border-blue-200"
           label="Index"
           valueTestId={size === "large" ? "live-index-bar-label" : undefined}
           barTestId={size === "large" ? "live-index-bar" : undefined}
@@ -178,7 +182,10 @@ function BarComparisonChart({
           value={scenario.credited}
           maxMagnitude={maxMagnitude}
           maxHeight={barMaxHeight}
+          chartContentHeight={chartHeight - 24}
           colorClassName="bg-emerald-500"
+          valueColorClassName="text-emerald-800"
+          chipBorderClassName="border-emerald-200"
           label="Credit"
           valueTestId={size === "large" ? "live-credit-bar-label" : undefined}
           barTestId={size === "large" ? "live-credit-bar" : undefined}
@@ -192,7 +199,10 @@ function VerticalBar({
   value,
   maxMagnitude,
   maxHeight,
+  chartContentHeight,
   colorClassName,
+  valueColorClassName,
+  chipBorderClassName,
   label,
   valueTestId,
   barTestId
@@ -200,12 +210,25 @@ function VerticalBar({
   value: number;
   maxMagnitude: number;
   maxHeight: number;
+  chartContentHeight: number;
   colorClassName: string;
+  valueColorClassName: string;
+  chipBorderClassName: string;
   label: string;
   valueTestId?: string;
   barTestId?: string;
 }) {
   const barHeight = Math.max(4, Math.round((Math.abs(value) / maxMagnitude) * maxHeight));
+  const baseline = chartContentHeight / 2;
+  const chipHeight = 24;
+  const chipGap = 8;
+  const bottomLabelClearance = 20;
+  const unclampedChipTop =
+    value >= 0 ? baseline - barHeight - chipHeight - chipGap : baseline + barHeight + chipGap;
+  const chipTop = Math.min(
+    Math.max(0, unclampedChipTop),
+    chartContentHeight - chipHeight - bottomLabelClearance
+  );
   const positioning = value >= 0 ? { bottom: "50%", height: `${barHeight}px` } : { top: "50%", height: `${barHeight}px` };
 
   return (
@@ -216,14 +239,36 @@ function VerticalBar({
         style={positioning}
         aria-label={`${label}: ${pct(value)}`}
       />
-      <span
-        data-testid={valueTestId}
-        className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold ${value >= 0 ? "bottom-[calc(50%+6px)]" : "top-[calc(50%+6px)]"} ${label === "Index" ? "text-blue-800" : "text-emerald-700"}`}
-      >
-        {pct(value)}
-      </span>
+      <ValueLabelChip
+        value={pct(value)}
+        className={`absolute left-1/2 z-20 -translate-x-1/2 ${valueColorClassName} ${chipBorderClassName}`}
+        style={{ top: `${chipTop}px` }}
+        testId={valueTestId}
+      />
       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-500">{label}</span>
     </div>
+  );
+}
+
+function ValueLabelChip({
+  value,
+  className,
+  style,
+  testId
+}: {
+  value: string;
+  className: string;
+  style: CSSProperties;
+  testId?: string;
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className={`whitespace-nowrap rounded-full border bg-white px-2 py-0.5 text-xs font-semibold shadow-sm ${className}`}
+      style={style}
+    >
+      {value}
+    </span>
   );
 }
 
