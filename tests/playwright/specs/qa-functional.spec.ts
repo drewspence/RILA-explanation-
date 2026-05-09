@@ -12,7 +12,8 @@ test.describe("core QA flows", () => {
     await expect(page.getByRole("heading", { level: 1, name: /structured outcome studio/i })).toBeVisible();
     await expect(tab(page, "scenario")).toBeVisible();
     await expect(tab(page, "compare")).toBeVisible();
-    await expect(tab(page, "print")).toBeVisible();
+    await expect(page.getByRole("button", { name: /presentation view/i })).toHaveCount(0);
+    await expect(page.getByTestId("tab-print")).toHaveCount(0);
     await expect(page.getByTestId("tab-overview")).toHaveCount(0);
     await expect(page.getByTestId("scenario-builder")).toBeVisible();
 
@@ -108,8 +109,7 @@ test.describe("core QA flows", () => {
     await expectNoHorizontalOverflow(page);
     await expectNoVisibleOverlap(page, [
       '[data-testid="tab-scenario"]',
-      '[data-testid="tab-compare"]',
-      '[data-testid="tab-print"]'
+      '[data-testid="tab-compare"]'
     ]);
   });
 });

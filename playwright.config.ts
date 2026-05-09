@@ -21,9 +21,9 @@ export default defineConfig({
   outputDir: "test-results/playwright",
   use: {
     baseURL,
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: "off",
+    screenshot: "off",
+    video: "off",
     headless: true,
     actionTimeout: 15_000,
     navigationTimeout: 30_000

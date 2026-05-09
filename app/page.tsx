@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, FileText, GitCompareArrows } from "lucide-react";
+import { BarChart3, GitCompareArrows } from "lucide-react";
 import { Field } from "@/components/shared/Field";
 import { strategyById, strategyConfigs } from "@/lib/strategyConfigs";
 import { StrategyId, StrategyInputs, StrategyResult } from "@/types/strategy";
@@ -10,12 +10,10 @@ import { decimalToUiPercent, pct, uiPercentToDecimal, currency } from "@/lib/for
 import { PayoffChart } from "@/components/charts/PayoffChart";
 import { scenarioPresets } from "@/lib/scenarioPresets";
 import { CompareStrategies } from "@/components/compare/CompareStrategies";
-import { PresentationView } from "@/components/print/PresentationView";
 
 const tabs = [
   { id: "scenario", label: "Scenario Builder", icon: BarChart3 },
-  { id: "compare", label: "Compare Strategies", icon: GitCompareArrows },
-  { id: "print", label: "Presentation View", icon: FileText }
+  { id: "compare", label: "Compare Strategies", icon: GitCompareArrows }
 ] as const;
 
 export default function HomePage() {
@@ -24,7 +22,6 @@ export default function HomePage() {
   const [startingPremium, setStartingPremium] = useState(100000);
   const [marketReturn, setMarketReturn] = useState(0.08);
   const [roundToDollar, setRoundToDollar] = useState(false);
-  const [clientName, setClientName] = useState("");
 
   const [strategyInputsMap, setStrategyInputsMap] = useState<Record<string, StrategyInputs>>(
     Object.fromEntries(strategyConfigs.map((s) => [s.id, s.defaults]))
@@ -66,7 +63,7 @@ export default function HomePage() {
             <p className="mt-2 max-w-3xl text-sm text-slate-600 lg:text-base">A client-facing visual walkthrough for how different RILA payoff designs behave under one market scenario.</p>
           </div>
         </div>
-        <nav className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <nav className="mt-6 grid gap-2 sm:grid-cols-2">
           {tabs.map((t) => {
             const Icon = t.icon;
             return (
@@ -110,20 +107,6 @@ export default function HomePage() {
 
       {tab === "compare" && (
         <CompareStrategies startingPremium={startingPremium} marketReturn={marketReturn} setMarketReturn={setMarketReturn} roundToDollar={roundToDollar} />
-      )}
-
-      {tab === "print" && (
-        <PresentationView
-          strategy={inputs.labelOverride || strategy.label}
-          strategyId={strategy.id}
-          clientName={clientName}
-          setClientName={setClientName}
-          marketReturn={marketReturn}
-          result={outcome}
-          assumptions={activeKeys.map((key) => `${key}: ${pct((inputs[key] as number) ?? 0)}`)}
-          payoffData={payoffData}
-          inputs={inputs}
-        />
       )}
     </main>
   );

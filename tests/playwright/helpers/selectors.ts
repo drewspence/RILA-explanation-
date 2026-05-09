@@ -10,7 +10,7 @@ export function byTestIdOrRole(
   return testIdMatch.or(page.getByRole(role, options));
 }
 
-export function tab(page: Page, tabId: "scenario" | "compare" | "print") {
+export function tab(page: Page, tabId: "scenario" | "compare") {
   return page.getByTestId(`tab-${tabId}`);
 }
 
