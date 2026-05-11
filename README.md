@@ -1,4 +1,4 @@
-# Allianz-style 1-year RILA Strategy Illustration Tool
+# 1-year RILA Strategy Illustration Tool
 
 Educational, client-facing advisor explanation app built with Next.js App Router + TypeScript.
 
