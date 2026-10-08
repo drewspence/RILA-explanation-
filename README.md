@@ -1,3 +1,13 @@
+# RILA Explained
+
+Interactive, client-facing education for end-of-term RILA buffers and upside rules. The main lesson opens at a -18% index return with a 10% buffer and 15% cap, showing the loss allocation and a hypothetical index comparison. Advisor settings include floors, participation and triggers; presentation mode keeps the conversation focused.
+
+See [the experience and calculation architecture](docs/educational-experience.md) for the flow, formulas, model, assumptions and acceptance criteria.
+
+Verification: `npm test`, `npm run build`, and `npm run qa:e2e`. Install Playwright Chromium with `npx playwright install chromium` before browser tests. In environments with a preinstalled browser, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select its executable. Use `PLAYWRIGHT_BASE_URL` to verify a running preview. Preview changes should be reviewed before merging into the production branch.
+
+---
+
 # 1-year RILA Strategy Illustration Tool
 
 Educational, client-facing advisor explanation app built with Next.js App Router + TypeScript.

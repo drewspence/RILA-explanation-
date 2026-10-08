@@ -1,4 +1,5 @@
-import { computeEndingValue } from "@/lib/calculations/strategies";
+import { calculateEducationalOutcome } from "./education";
+import { termsFromStrategy } from "@/lib/products";
 import { buildPayoffSeries } from "@/lib/calculations/payoffVisualization";
 import { strategyById } from "@/lib/strategyConfigs";
 import {
@@ -15,15 +16,12 @@ export function calculateStrategyOutcome(
   startingPremium: number,
   inputs: StrategyInputs
 ): StrategyResult {
-  const creditedReturn = config.calculate(marketReturn, inputs);
-  const endingValue = computeEndingValue(startingPremium, creditedReturn);
-  const dollarChange = endingValue - startingPremium;
-
+  const result = calculateEducationalOutcome(termsFromStrategy(config, inputs), marketReturn, startingPremium);
   return {
-    creditedReturn,
-    endingValue,
-    dollarChange,
-    explanation: config.explainer(marketReturn, inputs, creditedReturn)
+    creditedReturn: result.rilaReturn,
+    endingValue: result.rilaEndingValue,
+    dollarChange: result.rilaDollarChange,
+    explanation: result.explanation
   };
 }
 
