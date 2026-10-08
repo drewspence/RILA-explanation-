@@ -1165,3 +1165,63 @@ h2 {
     font-size: 18px;
   }
 }
+
+/* Shared-zero vertical comparison, retained as the main teaching visual. */
+.intro { padding: 30px 0 25px; }
+.intro h1 { font-size: clamp(28px, 4vw, 42px); letter-spacing: -1.3px; }
+.intro-description { margin: 13px 0 17px; }
+.return-chart { margin: 22px 0 0; }
+.return-chart-legend { display: flex; flex-wrap: wrap; gap: 12px 22px; font-size: 12px; color: var(--muted); }
+.return-chart-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.return-chart-legend i { width: 10px; height: 10px; border-radius: 2px; }
+.index-swatch, .index-bar { background: var(--blue); }
+.credit-swatch, .credit-bar { background: var(--green); }
+.loss-swatch, .loss-bar { background: var(--red); }
+.absorbed-swatch, .return-absorbed-gap { background: repeating-linear-gradient(125deg, #cee4d8, #cee4d8 5px, #9fc5b0 5px, #9fc5b0 7px); }
+.return-plot { position: relative; height: 320px; margin: 40px 0 48px 48px; }
+.return-gridline { position: absolute; inset-inline: 0; border-top: 1px solid #e5eae7; z-index: 1; }
+.return-gridline.zero-gridline { border-top: 2px solid #83918a; z-index: 4; }
+.return-axis-label { position: absolute; right: calc(100% + 10px); transform: translateY(-50%); color: #697870; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.return-buffer-zone { position: absolute; inset-inline: 0; background: #edf6ef; z-index: 0; transition: height .25s ease; }
+.return-rule { position: absolute; inset-inline: 0; border-top: 1px dashed; z-index: 4; transition: top .25s ease; }
+.return-rule span { position: absolute; right: 0; bottom: 4px; background: white; padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.buffer-rule { border-color: #73a28b; color: #316949; }
+.cap-rule { border-color: #bea36f; color: #826532; }
+.return-columns { position: absolute; inset: 0 80px 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; z-index: 3; }
+.return-column { position: relative; height: 100%; min-width: 0; }
+.return-bar, .return-absorbed-gap { position: absolute; width: clamp(35px, 7vw, 68px); left: 50%; transform: translateX(-50%); transition: top .3s ease, height .3s ease, background-color .2s ease; }
+.return-bar { border-radius: 5px 5px 0 0; z-index: 2; }
+.return-bar.negative-bar { border-radius: 0 0 5px 5px; }
+.return-absorbed-gap { border: 1px solid #9fc5b0; border-top: 0; border-radius: 0 0 5px 5px; z-index: 1; }
+.return-value { position: absolute; left: 50%; transform: translate(-50%, calc(-100% - 8px)); white-space: nowrap; border-radius: 6px; padding: 4px 7px; background: white; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; box-shadow: 0 1px 5px #1d3b2d0c; border: 1px solid var(--line); z-index: 5; transition: top .3s ease; }
+.return-value.below-value { transform: translate(-50%, 8px); }
+.index-value { color: var(--blue); }
+.credit-value { color: var(--green); }
+.loss-value { color: var(--red); }
+.return-column-label { position: absolute; top: calc(100% + 22px); left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; font-weight: 550; }
+.return-chart-caption { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 0; max-width: 750px; }
+.presentation .intro h1 { font-size: 30px; }
+.presentation .return-plot { height: 350px; }
+.presentation .return-value { font-size: 22px; }
+.presentation .return-chart-legend { font-size: 14px; }
+@media (max-width: 760px) {
+  .intro { padding: 26px 0 22px; }
+  .return-columns { inset-inline: 4px 70px; gap: 16px; }
+  .return-plot { height: 290px; margin-left: 40px; }
+}
+@media (max-width: 480px) {
+  .intro h1 { font-size: 28px; }
+  .return-chart-legend { font-size: 11px; gap: 9px 13px; }
+  .return-plot { height: 280px; margin: 34px 0 46px 34px; }
+  .return-axis-label { font-size: 10px; right: calc(100% + 7px); }
+  .return-columns { inset-inline: 0 62px; gap: 12px; }
+  .return-rule span { font-size: 9px; padding-inline: 4px; }
+  .return-bar, .return-absorbed-gap { width: 34px; }
+  .return-value { font-size: 13px; padding: 3px 5px; }
+  .return-column-label { font-size: 10px; }
+  .presentation .return-plot { height: 280px; }
+  .presentation .return-value { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .return-bar, .return-absorbed-gap, .return-value, .return-rule, .return-buffer-zone { transition: none; }
+}

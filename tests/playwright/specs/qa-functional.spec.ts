@@ -13,7 +13,7 @@ test("buffer is visible immediately and scenarios explain both loss and upside",
     fullPage: true,
   });
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "The first losses are cushioned",
+    "How a RILA buffer works",
   );
   await expect(page.getByTestId("live-credited-return")).toHaveText("-8%");
   await expect(page.getByTestId("live-ending-value")).toHaveText("$92,000");
@@ -21,9 +21,21 @@ test("buffer is visible immediately and scenarios explain both loss and upside",
   await expect(page.getByTestId("absorbed-dollars")).toHaveText("$10,000");
   await expect(page.getByTestId("investor-loss-dollars")).toHaveText("$8,000");
   await expect(page.getByTestId("segment-absorbed")).toBeVisible();
-  await expect(page.getByTestId("segment-investor-loss")).toBeVisible();
+  await expect(page.getByTestId("live-index-bar")).toHaveAttribute("data-return", "-0.18");
+  await expect(page.getByTestId("live-credit-bar")).toHaveAttribute("data-return", "-0.08");
+  await expect(page.getByTestId("downside-boundary")).toContainText("10% buffer");
+  const initialGeometry = await page.getByTestId("return-plot").evaluate((plot) => {
+    const index = plot.querySelector('[data-testid="live-index-bar"]')!.getBoundingClientRect();
+    const credit = plot.querySelector('[data-testid="live-credit-bar"]')!.getBoundingClientRect();
+    const absorbed = plot.querySelector('[data-testid="segment-absorbed"]')!.getBoundingClientRect();
+    return { indexHeight: index.height, creditHeight: credit.height, absorbedHeight: absorbed.height, indexTop: index.top, creditTop: credit.top };
+  });
+  expect(initialGeometry.indexTop).toBeCloseTo(initialGeometry.creditTop, 1);
+  expect(initialGeometry.indexHeight / initialGeometry.creditHeight).toBeCloseTo(18 / 8, 1);
+  expect(initialGeometry.absorbedHeight + initialGeometry.creditHeight).toBeCloseTo(initialGeometry.indexHeight, 1);
   await page.getByRole("button", { name: "-5%", exact: true }).click();
   await expect(page.getByTestId("live-credited-return")).toHaveText("0%");
+  await expect(page.getByTestId("live-credit-bar")).toHaveCSS("height", "0px");
   await expect(page.getByTestId("absorbed-dollars")).toHaveText("$5,000");
   await page.getByRole("button", { name: "+25%", exact: true }).click();
   await expect(page.getByTestId("live-credited-return")).toHaveText("+15%");
@@ -31,7 +43,10 @@ test("buffer is visible immediately and scenarios explain both loss and upside",
   await expect(page.getByTestId("live-scenario-explanation")).toContainText(
     "cap limits your credited return",
   );
-  await expect(page.getByTestId("segment-cap-reduction")).toBeVisible();
+  await expect(page.getByTestId("live-index-bar-label")).toHaveText("+25%");
+  await expect(page.getByTestId("live-credit-bar-label")).toHaveText("+15%");
+  await expect(page.getByTestId("cap-boundary")).toContainText("15% cap");
+  await expect(page.getByText("Above cap · not credited", { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   expect(monitor.getErrors()).toEqual([]);
 });

@@ -98,22 +98,7 @@ export default function HomePage() {
         </div>
       </header>
       <section className="intro">
-        <p className="eyebrow">A little protection. A clearer picture.</p>
-        <h1>
-          {buffer ? (
-            <>
-              The first losses are cushioned.
-              <br />
-              <span>The rest can reach you.</span>
-            </>
-          ) : (
-            <>
-              A floor limits index losses.
-              <br />
-              <span>You still bear some risk.</span>
-            </>
-          )}
-        </h1>
+        <h1>{buffer ? "How a RILA buffer works" : "How a RILA floor works"}</h1>
         <p className="intro-description">
           {buffer
             ? `At the end of the selected term, a ${pct(bufferRate)} buffer absorbs the first ${pct(bufferRate)} of the index’s loss. You bear losses beyond it.`
