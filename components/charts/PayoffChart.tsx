@@ -147,7 +147,7 @@ function BarComparisonChart({
     ...referenceLines.map((line) => Math.abs(line.value))
   );
   const chartHeight = size === "large" ? 260 : 168;
-  const barMaxHeight = size === "large" ? 112 : 72;
+  const barMaxHeight = chartHeight / 2 - 12;
   const barGap = size === "large" ? "gap-16" : "gap-8";
 
   return (
@@ -183,7 +183,7 @@ function BarComparisonChart({
           maxMagnitude={maxMagnitude}
           maxHeight={barMaxHeight}
           chartContentHeight={chartHeight - 24}
-          colorClassName="bg-emerald-500"
+          colorClassName={scenario.credited < 0 ? "bg-rose-600" : "bg-emerald-500"}
           valueColorClassName="text-emerald-800"
           chipBorderClassName="border-emerald-200"
           label="Credit"
@@ -218,7 +218,7 @@ function VerticalBar({
   valueTestId?: string;
   barTestId?: string;
 }) {
-  const barHeight = Math.max(4, Math.round((Math.abs(value) / maxMagnitude) * maxHeight));
+  const barHeight = (Math.abs(value) / maxMagnitude) * maxHeight;
   const baseline = chartContentHeight / 2;
   const chipHeight = 24;
   const chipGap = 8;
@@ -325,9 +325,9 @@ function ValuePill({ label, value, className }: { label: string; value: string; 
 function getReferenceLines(strategy: StrategyConfig, inputs: StrategyInputs): ReferenceLine[] {
   const lines: ReferenceLine[] = [];
   const buffer = inputs.buffer ?? strategy.defaults.buffer;
-  const cap = inputs.cap ?? strategy.defaults.cap;
+  const cap = strategy.requiredInputs.includes("cap") ? inputs.cap ?? strategy.defaults.cap : undefined;
   const floor = inputs.floor ?? strategy.defaults.floor;
-  const triggerRate = inputs.triggerRate ?? strategy.defaults.triggerRate;
+  const triggerRate = strategy.requiredInputs.includes("triggerRate") ? inputs.triggerRate ?? strategy.defaults.triggerRate : undefined;
 
   if (strategy.protectionType.includes("Buffer") && typeof buffer === "number") {
     lines.push({ label: "Buffer", value: -buffer });
@@ -350,9 +350,9 @@ function getReferenceLines(strategy: StrategyConfig, inputs: StrategyInputs): Re
 
 function buildPlainEnglishSummary(strategy: StrategyConfig, inputs: StrategyInputs) {
   const buffer = inputs.buffer ?? strategy.defaults.buffer;
-  const cap = inputs.cap ?? strategy.defaults.cap;
+  const cap = strategy.requiredInputs.includes("cap") ? inputs.cap ?? strategy.defaults.cap : undefined;
   const floor = inputs.floor ?? strategy.defaults.floor;
-  const triggerRate = inputs.triggerRate ?? strategy.defaults.triggerRate;
+  const triggerRate = strategy.requiredInputs.includes("triggerRate") ? inputs.triggerRate ?? strategy.defaults.triggerRate : undefined;
 
   if (strategy.protectionType.includes("Buffer") && typeof buffer === "number") {
     const upsideRule = typeof cap === "number" ? ` If the market is positive, gains are credited up to the ${pct(cap)} cap.` : " If the market is positive, gains are credited using the selected upside rule.";

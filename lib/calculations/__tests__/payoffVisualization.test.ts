@@ -76,3 +76,16 @@ describe("payoff visualization helpers", () => {
     expect(domain.y[0]).toBeLessThan(domain.y[1]);
   });
 });
+
+
+describe("strategy-specific cap annotations", () => {
+  it("never describes uncapped participation or triggers as capped", () => {
+    for (const id of ["performanceParticipation", "precision", "dualPrecision"]) {
+      const config = strategyById[id];
+      const scenarios = buildClientFriendlyScenarios(config, config.defaults);
+      expect(scenarios[2].title).not.toContain("capped");
+      expect(scenarios[2].note).not.toContain("cap");
+      expect(scenarios[2].referenceLine?.label).not.toBe("Cap");
+    }
+  });
+});

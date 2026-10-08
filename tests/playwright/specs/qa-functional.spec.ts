@@ -1,115 +1,132 @@
 import { expect, test } from "@playwright/test";
 import { monitorConsoleErrors } from "../helpers/console";
-import { byTestIdOrRole, liveScenarioValues, tab } from "../helpers/selectors";
-import { expectNoHorizontalOverflow, expectNoVisibleOverlap, expectVisibleWithinViewport } from "../helpers/uiAssertions";
+import { expectNoHorizontalOverflow } from "../helpers/uiAssertions";
 
-test.describe("core QA flows", () => {
-  test("app loads to scenario builder and main controls are usable", async ({ page }) => {
-    const consoleMonitor = monitorConsoleErrors(page);
-
-    await page.goto("/");
-
-    await expect(page.getByRole("heading", { level: 1, name: /structured outcome studio/i })).toBeVisible();
-    await expect(tab(page, "scenario")).toBeVisible();
-    await expect(tab(page, "compare")).toBeVisible();
-    await expect(page.getByRole("button", { name: /presentation view/i })).toHaveCount(0);
-    await expect(page.getByTestId("tab-print")).toHaveCount(0);
-    await expect(page.getByTestId("tab-overview")).toHaveCount(0);
-    await expect(page.getByTestId("scenario-builder")).toBeVisible();
-
-    const strategySelect = byTestIdOrRole(page, "strategy-select", "combobox");
-    const marketSlider = page.getByTestId("market-slider");
-    const payoffChart = page.getByTestId("payoff-chart");
-
-    await expectVisibleWithinViewport(strategySelect, "strategy selector");
-    await expectVisibleWithinViewport(marketSlider, "market slider");
-    await expectVisibleWithinViewport(payoffChart, "payoff chart");
-
-    await expect(consoleMonitor.getErrors(), `Console errors were captured: ${consoleMonitor.getErrors().join(" | ")}`).toEqual([]);
+test("buffer is visible immediately and scenarios explain both loss and upside", async ({
+  page,
+}, testInfo) => {
+  const monitor = monitorConsoleErrors(page);
+  await page.goto("/");
+  await expect(page.getByRole("status")).toContainText("Index return -18%");
+  await page.screenshot({
+    path: testInfo.outputPath("initial.png"),
+    fullPage: true,
   });
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "The first losses are cushioned",
+  );
+  await expect(page.getByTestId("live-credited-return")).toHaveText("-8%");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$92,000");
+  await expect(page.getByTestId("index-ending-value")).toHaveText("$82,000");
+  await expect(page.getByTestId("absorbed-dollars")).toHaveText("$10,000");
+  await expect(page.getByTestId("investor-loss-dollars")).toHaveText("$8,000");
+  await expect(page.getByTestId("segment-absorbed")).toBeVisible();
+  await expect(page.getByTestId("segment-investor-loss")).toBeVisible();
+  await page.getByRole("button", { name: "-5%", exact: true }).click();
+  await expect(page.getByTestId("live-credited-return")).toHaveText("0%");
+  await expect(page.getByTestId("absorbed-dollars")).toHaveText("$5,000");
+  await page.getByRole("button", { name: "+25%", exact: true }).click();
+  await expect(page.getByTestId("live-credited-return")).toHaveText("+15%");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$115,000");
+  await expect(page.getByTestId("live-scenario-explanation")).toContainText(
+    "cap limits your credited return",
+  );
+  await expect(page.getByTestId("segment-cap-reduction")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(monitor.getErrors()).toEqual([]);
+});
 
-  test("scenario presets and slider change summary values and chart annotations", async ({ page }) => {
-    await page.goto("/");
+test("precise boundaries, keyboard slider and invalid drafts keep results honest", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByTestId("market-number").fill("-10.01");
+  await expect(page.getByTestId("live-credited-return")).toHaveText("-0.01%");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$99,990");
+  await expect(page.getByTestId("live-scenario-explanation")).toContainText(
+    "10.01%",
+  );
+  await page.getByTestId("market-number").fill("-10");
+  await expect(page.getByTestId("live-credited-return")).toHaveText("0%");
+  await page.getByTestId("market-number").fill("0");
+  await expect(page.getByTestId("live-scenario-explanation")).toContainText(
+    "flat",
+  );
+  const slider = page.getByTestId("market-slider");
+  await slider.focus();
+  await slider.press("ArrowRight");
+  await expect(page.getByTestId("live-index-return-value")).toHaveText(
+    "+0.01%",
+  );
+  await page.getByRole("button", { name: /Advisor settings/ }).click();
+  await page.getByLabel("Starting investment").fill("-100");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "last valid value" }),
+  ).toContainText("last valid value");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$100,010");
+});
 
-    const values = liveScenarioValues(page);
-    const initialEndingValue = (await values.endingValue.textContent())?.trim();
+test("advisor settings switch actual rules and the table uses those terms", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Advisor settings/ }).click();
+  await page.getByLabel("Upside rule").selectOption("participation");
+  await page.getByLabel("Participation rate").fill("150");
+  await page.getByRole("button", { name: "+25%", exact: true }).click();
+  await expect(page.getByTestId("live-credited-return")).toHaveText("+37.5%");
+  await expect(page.getByTestId("live-scenario-explanation")).not.toContainText(
+    "cap",
+  );
+  await page.getByLabel("Crediting period", { exact: true }).fill("6");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$137,500");
+  await page.getByLabel("Downside rule").selectOption("floor");
+  await page.getByRole("button", { name: "-35%", exact: true }).click();
+  await expect(page.getByTestId("live-credited-return")).toHaveText("-10%");
+  await expect(page.getByTestId("live-scenario-explanation")).toContainText(
+    "floor",
+  );
+  await page
+    .getByRole("button", { name: "Show index -50% scenario", exact: true })
+    .click();
+  await expect(page.getByTestId("live-index-return-value")).toHaveText("-50%");
+  await expect(page.getByTestId("live-ending-value")).toHaveText("$90,000");
+  await expectNoHorizontalOverflow(page);
+});
 
-    await page.getByRole("button", { name: /severe down/i }).click();
-    await expect(values.creditedReturn).toContainText(/-/);
-
-    await page.getByRole("button", { name: /strong up/i }).click();
-    await expect(values.creditedReturn).not.toContainText(/-/);
-
-    await page.getByTestId("market-slider").evaluate((slider) => {
-      const element = slider as HTMLInputElement;
-      const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-      valueSetter?.call(element, "0.2");
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-      element.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await expect(page.getByTestId("active-scenario-card")).toContainText(/if the market return is 20%/i);
-    await expect(page.getByTestId("live-index-return-value")).toHaveText("20%");
-    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("12%");
-    await expect(page.getByTestId("live-index-bar-label")).toHaveText("20%");
-    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("12%");
-
-    await expect(values.endingValue).not.toHaveText(initialEndingValue ?? "");
-  });
-
-  test("live bar chart follows the market slider and strategy calculation", async ({ page }) => {
-    await page.goto("/");
-
-    const setSlider = async (value: string) => {
-      await page.getByTestId("market-slider").evaluate((slider, nextValue) => {
-        const element = slider as HTMLInputElement;
-        const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-        valueSetter?.call(element, nextValue as string);
-        element.dispatchEvent(new Event("input", { bubbles: true }));
-        element.dispatchEvent(new Event("change", { bubbles: true }));
-      }, value);
-    };
-
-    await setSlider("0.2");
-    await expect(page.getByTestId("live-index-return-value")).toHaveText("20%");
-    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("12%");
-    await expect(page.getByTestId("live-index-bar-label")).toHaveText("20%");
-    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("12%");
-    const positiveIndexBarHeight = await page.getByTestId("live-index-bar").evaluate((bar) => getComputedStyle(bar).height);
-    const positiveCreditBarHeight = await page.getByTestId("live-credit-bar").evaluate((bar) => getComputedStyle(bar).height);
-
-    await setSlider("-0.1");
-    await expect(page.getByTestId("live-index-return-value")).toHaveText("-10%");
-    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("0%");
-    await expect(page.getByTestId("live-index-bar-label")).toHaveText("-10%");
-    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("0%");
-
-    await setSlider("-0.25");
-    await expect(page.getByTestId("live-index-return-value")).toHaveText("-25%");
-    await expect(page.getByTestId("live-performance-credit-value")).toHaveText("-15%");
-    await expect(page.getByTestId("live-index-bar-label")).toHaveText("-25%");
-    await expect(page.getByTestId("live-credit-bar-label")).toHaveText("-15%");
-    await expect(page.getByTestId("live-scenario-explanation")).toContainText(/after the 10% buffer/i);
-
-    await expect(page.getByTestId("live-index-bar")).not.toHaveCSS("height", positiveIndexBarHeight);
-    await expect(page.getByTestId("live-credit-bar")).not.toHaveCSS("height", positiveCreditBarHeight);
-  });
-
-  test("compare flow remains interactive and responsive", async ({ page }) => {
-    await page.goto("/");
-    await tab(page, "compare").click();
-
-    await expect(page.getByRole("heading", { level: 2, name: /side-by-side strategy behavior/i })).toBeVisible();
-
-    const strategySelectors = page.getByRole("combobox");
-    await expect(strategySelectors).toHaveCount(2);
-
-    await strategySelectors.nth(1).selectOption("guard");
-    await expect(page.getByText(/credited return delta/i)).toBeVisible();
-
-    await expectNoHorizontalOverflow(page);
-    await expectNoVisibleOverlap(page, [
-      '[data-testid="tab-scenario"]',
-      '[data-testid="tab-compare"]'
-    ]);
-  });
+test("presentation, disclosure and independent strategy comparison remain accessible", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Presentation view" }).click();
+  await expect(
+    page.getByRole("button", { name: /Advisor settings/ }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("market-slider")).toBeVisible();
+  await expect(
+    page.getByText("A RILA can lose money.", { exact: false }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Presentation view" }),
+  ).toBeVisible();
+  await page
+    .getByText("Advisor tools · compare additional strategy structures", {
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel("Strategy B structure")
+    .selectOption("performanceParticipation");
+  await page.getByRole("button", { name: "+25%", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Side-by-side strategy behavior" }),
+  ).toBeVisible();
+  await page
+    .getByText("Important considerations & assumptions", { exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "SEC Investor.gov: RILAs" }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });

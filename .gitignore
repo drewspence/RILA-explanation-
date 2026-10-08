@@ -6,3 +6,5 @@ npm-debug.log*
 playwright-report
 test-results
 tests/playwright/specs/qa-visual.spec.ts-snapshots
+
+*.tsbuildinfo

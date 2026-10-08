@@ -1,6 +1,6 @@
 const trimZeros = (value: string) => value.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
 
-export const pct = (value: number, digits = 1) => `${trimZeros((value * 100).toFixed(digits))}%`;
+export const pct = (value: number, digits = 2) => `${trimZeros((value * 100).toFixed(digits))}%`;
 
 export const pctInput = (decimal: number, digits = 2) => trimZeros((decimal * 100).toFixed(digits));
 

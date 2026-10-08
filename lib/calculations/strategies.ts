@@ -1,6 +1,6 @@
 import { StrategyInputs } from "@/types/strategy";
 
-const bounded = (value: number, min = -1, max = 2) => Math.min(max, Math.max(min, value));
+import { calculateDollarReturn } from "./education";
 
 export const performanceWithCap = (r: number, { buffer = 0.1, cap = 0.12 }: StrategyInputs) => {
   if (r >= 0) return Math.min(r, cap);
@@ -33,4 +33,4 @@ export const protectionTrigger = (r: number, { triggerRate = 0.04 }: StrategyInp
 export const protectionCap = (r: number, { cap = 0.07 }: StrategyInputs) => (r >= 0 ? Math.min(r, cap) : 0);
 
 export const computeEndingValue = (startingPremium: number, creditedReturn: number) =>
-  Math.max(0, startingPremium * (1 + bounded(creditedReturn)));
+  calculateDollarReturn(startingPremium, creditedReturn).endingValue;

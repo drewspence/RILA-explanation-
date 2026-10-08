@@ -21,6 +21,10 @@ export default defineConfig({
   outputDir: "test-results/playwright",
   use: {
     baseURL,
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+      args: ["--no-sandbox", "--disable-dev-shm-usage"]
+    } : undefined,
     trace: "off",
     screenshot: "off",
     video: "off",

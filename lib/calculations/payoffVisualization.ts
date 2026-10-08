@@ -122,9 +122,9 @@ const clampMarketScenario = (value: number) => Math.max(PAYOFF_RANGE.min, Math.m
 
 export function buildClientFriendlyScenarios(config: StrategyConfig, inputs: StrategyInputs): ClientFriendlyScenario[] {
   const buffer = Math.max(0, inputs.buffer ?? config.defaults.buffer ?? 0.1);
-  const cap = inputs.cap ?? config.defaults.cap;
+  const cap = config.requiredInputs.includes("cap") ? inputs.cap ?? config.defaults.cap : undefined;
   const floor = inputs.floor ?? config.defaults.floor;
-  const triggerRate = inputs.triggerRate ?? config.defaults.triggerRate;
+  const triggerRate = config.requiredInputs.includes("triggerRate") ? inputs.triggerRate ?? config.defaults.triggerRate : undefined;
 
   if (config.protectionType.includes("Buffer")) {
     const withinBufferMarket = -Math.min(buffer, 0.1);

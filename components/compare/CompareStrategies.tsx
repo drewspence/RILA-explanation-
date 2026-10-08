@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { NumberField } from "@/components/education/NumberField";
 import { compareStrategyOutcomes, visibleInputKeys } from "@/lib/calculations/engine";
 import { buildPayoffData } from "@/lib/calculations/engine";
 import { currency, pct, uiPercentToDecimal } from "@/lib/formatters";
@@ -54,8 +55,8 @@ export function CompareStrategies({
           <Assumption label="Starting premium" value={currency(startingPremium, roundToDollar)} />
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Synchronized market slider
-            <input type="range" min={-0.4} max={0.4} step={0.005} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-3 w-full accent-slate-700" />
-            <div className="mt-1 flex justify-between text-[11px] font-normal text-slate-500"><span>-40%</span><span>0%</span><span>+40%</span></div>
+            <input type="range" min={-0.5} max={0.5} step={0.0001} value={marketReturn} onChange={(e) => setMarketReturn(Number(e.target.value))} className="mt-3 w-full accent-slate-700" />
+            <div className="mt-1 flex justify-between text-[11px] font-normal text-slate-500"><span>-50%</span><span>0%</span><span>+50%</span></div>
           </label>
         </div>
       </header>
@@ -103,7 +104,7 @@ function StrategyPanel({
   return (
     <article className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</p>
-      <select className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm" value={strategy} onChange={(e) => { const id = e.target.value as StrategyId; setStrategy(id); setInputs({ ...strategyById[id].defaults }); }}>
+      <select aria-label={`${title} structure`} className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm" value={strategy} onChange={(e) => { const id = e.target.value as StrategyId; setStrategy(id); setInputs({ ...strategyById[id].defaults }); }}>
         {strategyConfigs.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
 
@@ -132,15 +133,15 @@ function MiniPayoff({ data, marketReturn, activeCredited }: { data: Array<{ mark
   const height = 132;
   const xMin = -0.5;
   const xMax = 0.5;
-  const yMin = -0.5;
-  const yMax = 0.5;
+  const yMin = Math.min(-0.5, ...data.map(p => p.credited));
+  const yMax = Math.max(0.5, ...data.map(p => p.credited));
   const x = (value: number) => ((value - xMin) / (xMax - xMin)) * width;
   const y = (value: number) => height - ((value - yMin) / (yMax - yMin)) * height;
   const path = data.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.market)},${y(p.credited)}`).join(" ");
 
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-28 w-full">
+      <svg role="img" aria-label="Credited return as a function of index return. The active result is described below." viewBox={`0 0 ${width} ${height}`} className="h-28 w-full">
         <rect x={0} y={0} width={width} height={height} fill="#f8fafc" />
         <line x1={0} y1={y(0)} x2={width} y2={y(0)} stroke="#94a3b8" strokeDasharray="4 4" />
         <line x1={x(0)} y1={0} x2={x(0)} y2={height} stroke="#94a3b8" strokeDasharray="4 4" />
@@ -153,15 +154,7 @@ function MiniPayoff({ data, marketReturn, activeCredited }: { data: Array<{ mark
 }
 
 function Term({ label, value, onChange, min, max }: { label: string; value: number; onChange: (value: number) => void; min: number; max: number; }) {
-  return (
-    <label className="text-xs text-slate-600">
-      <span className="font-semibold uppercase tracking-wide">{label}</span>
-      <div className="mt-1 flex items-center rounded-lg border border-slate-300 px-2 py-1">
-        <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} min={min} max={max} className="w-full bg-transparent text-sm outline-none" />
-        <span className="text-xs text-slate-500">%</span>
-      </div>
-    </label>
-  );
+  return <NumberField label={label} value={value} onChange={onChange} min={min} max={max} />;
 }
 
 function Assumption({ label, value }: { label: string; value: string }) {
